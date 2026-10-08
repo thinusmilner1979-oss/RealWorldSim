@@ -72,14 +72,14 @@ def test_climate_drought_index():
     assert oni == {"oni": 0.7, "season": "JJA", "year": 2026, "state": "el_nino"}
 
 
-def test_unhcr_aggregate_and_stooq_parse():
-    from realworldsim.sync import stooq, unhcr
+def test_unhcr_aggregate_and_gold_parse():
+    from realworldsim.sync import prices, unhcr
     items = [{"coo_iso": "SYR", "coa_iso": "TUR", "refugees": "3000000", "asylum_seekers": "0"},
              {"coo_iso": "SYR", "coa_iso": "DEU", "refugees": "500000", "asylum_seekers": "100000"}]
     got = unhcr.aggregate(items)
     assert got["SYR"]["refugees_out_live"] == 3600000 and got["TUR"]["refugees_in_live"] == 3000000
-    csv_text = "Symbol,Date,Time,Open,High,Low,Close,Volume\nXAUUSD,2026-10-07,22:00:00,1,2,0,3610.5,0\n"
-    assert stooq.parse(csv_text) == 3610.5
+    assert prices.parse_gold_api({"name": "Gold", "price": 4138.9}) == 4138.9
+    assert prices.parse_gold_api({}) is None
 
 
 def test_portwatch_disruption():
@@ -97,11 +97,3 @@ def test_portwatch_disruption():
     out = portwatch.disruption(feats, today)
     assert 0.6 < out["bab_el_mandeb"]["disruption"] < 0.7
 
-
-def test_yahoo_parse():
-    from realworldsim.sync import stooq
-    ok = {"chart": {"result": [{"meta": {"regularMarketPrice": 3612.3}, "indicators": {"quote": [{"close": [1, 2]}]}}]}}
-    assert stooq.parse_yahoo(ok) == 3612.3
-    no_meta = {"chart": {"result": [{"meta": {}, "indicators": {"quote": [{"close": [3500.0, None]}]}}]}}
-    assert stooq.parse_yahoo(no_meta) == 3500.0
-    assert stooq.parse_yahoo({"chart": {"result": None}}) is None

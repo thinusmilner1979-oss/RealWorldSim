@@ -17,8 +17,8 @@ Sources - all free, no API key, no account, each request made from the user's ow
              NOAA ONI -> El Nino / La Nina state.
   unhcr      UNHCR refugee stocks by origin and asylum country.
   portwatch  IMF PortWatch daily chokepoint transits -> observed shipping disruption.
-  stooq      Daily gold, Brent, copper, wheat, gas quotes.
-  fred       FRED CSV: Brent, Henry Hub, wheat, copper (overlaps stooq; either may be down).
+  prices     gold-api.com: spot gold.
+  fred       FRED CSV: Brent, Henry Hub, wheat, copper.
 
 Each fetcher returns a plain dict and never raises on network failure - it reports and
 returns {} so the rest of the sync proceeds. Results merge into <cache>/live_seed.json
@@ -32,11 +32,11 @@ import time
 from datetime import date, datetime
 from pathlib import Path
 
-from . import climate, fred, gdelt, owid, portwatch, stooq, ucdp, unhcr, worldbank
+from . import climate, fred, gdelt, owid, portwatch, prices, ucdp, unhcr, worldbank
 
 SOURCES = {
     "worldbank": worldbank.fetch, "owid": owid.fetch, "ucdp": ucdp.fetch, "gdelt": gdelt.fetch,
-    "climate": climate.fetch, "unhcr": unhcr.fetch, "portwatch": portwatch.fetch, "stooq": stooq.fetch,
+    "climate": climate.fetch, "unhcr": unhcr.fetch, "portwatch": portwatch.fetch, "prices": prices.fetch,
     "fred": fred.fetch,
 }
 DESCRIPTIONS = {
@@ -47,7 +47,7 @@ DESCRIPTIONS = {
     "climate": "Open-Meteo ERA5 + NOAA ENSO: drought index per country (slow: ~196 calls)",
     "unhcr": "UNHCR: refugee stocks",
     "portwatch": "IMF PortWatch: chokepoint shipping disruption",
-    "stooq": "Stooq: gold, Brent, copper, wheat, gas quotes",
+    "prices": "gold-api.com: spot gold (oil, gas, wheat, copper come from FRED)",
     "fred": "FRED: Brent, Henry Hub, wheat, copper",
 }
 MERGE_KEYS = ("_prices", "_tension", "_conflicts", "_enso", "_chokepoints")

@@ -95,7 +95,7 @@ def main(argv: list[str] | None = None) -> None:
     y = sub.add_parser("sync", help="pull live data from free public sources into the cache")
     y.add_argument("--cache", default=".rws_cache")
     y.add_argument("--sources", nargs="*", default=None,
-                   help="subset of: worldbank owid ucdp gdelt climate unhcr portwatch stooq fred (default: all)")
+                   help="subset of: worldbank owid ucdp gdelt climate unhcr portwatch prices fred (default: all)")
     y.add_argument("--history", nargs="*", type=int, metavar="YEAR",
                    help="instead of today's data, fetch World Bank values for these years (for backtests)")
     y.set_defaults(fn=cmd_sync)
