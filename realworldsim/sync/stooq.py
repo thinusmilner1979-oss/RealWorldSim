@@ -73,7 +73,8 @@ def parse_pink_sheet(xlsx_bytes: bytes) -> dict[str, float]:
             v = r[idx] if idx < len(r) else None
             if key not in out and isinstance(v, (int, float)):
                 out[key] = round(float(v) * scale, 3)
-        if len(out) == len(cols):
+                out.setdefault("_month", str(r[0]))
+        if len(out) >= len(cols) + 1:
             break
     return out
 
@@ -100,10 +101,11 @@ def fetch(cache: Path, verbose: bool = False) -> dict:
             from .http import get
 
             pink = parse_pink_sheet(get(PINK_SHEET, timeout=180, browser=True))
+            month = pink.pop("_month", "?")
             for k, v in pink.items():
                 prices.setdefault(k, v)
             if verbose and pink:
-                print("  world bank pink sheet (monthly):", ", ".join(f"{k} {v}" for k, v in pink.items()))
+                print(f"  world bank pink sheet ({month}):", ", ".join(f"{k} {v}" for k, v in pink.items()))
         except Exception as e:  # noqa: BLE001
             if verbose:
                 print(f"  world bank pink sheet: {e}")

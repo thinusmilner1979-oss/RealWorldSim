@@ -22,13 +22,22 @@ NAME_MAP = {
 }
 
 
+def _guess_key(name: str) -> str | None:
+    n = name.lower()
+    for word, key in (("hormuz", "hormuz"), ("mandeb", "bab_el_mandeb"), ("suez", "suez"), ("malacca", "malacca"),
+                      ("taiwan", "taiwan_strait"), ("bosporus", "bosporus"), ("bosphorus", "bosporus")):
+        if word in n:
+            return key
+    return None
+
+
 def disruption(features: list[dict], today: date | None = None) -> dict[str, dict]:
     today = today or date.today()
     recent: dict[str, list[float]] = {}
     base: dict[str, list[float]] = {}
     for f in features:
         a = f.get("attributes", {})
-        key = NAME_MAP.get(a.get("portname", ""))
+        key = NAME_MAP.get(a.get("portname", "")) or _guess_key(str(a.get("portname", "")))
         if not key or a.get("n_total") is None or a.get("date") is None:
             continue
         raw = a["date"]
@@ -56,8 +65,15 @@ def fetch(cache: Path, verbose: bool = False) -> dict:
     payload = get_json(BASE.format(start=start), timeout=120)
     feats = payload.get("features", [])
     if not feats:
+        if verbose:
+            print(f"  no features; response keys: {list(payload)[:6]} {str(payload)[:200]}")
         return {}
     out = disruption(feats)
     if verbose:
-        print("  " + ", ".join(f"{k} {v['disruption']:.0%}" for k, v in out.items()))
+        names = sorted({str(f.get("attributes", {}).get("portname")) for f in feats})
+        print(f"  {len(feats)} rows; chokepoint names in feed: {', '.join(names)[:300]}")
+        sample = feats[0].get("attributes", {})
+        print(f"  sample row: {str(sample)[:200]}")
+        if out:
+            print("  " + ", ".join(f"{k} {v['disruption']:.0%}" for k, v in out.items()))
     return {"_chokepoints": out} if out else {}
