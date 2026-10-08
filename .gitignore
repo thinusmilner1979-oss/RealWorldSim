@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+# live data cache written by `rws sync` and saved worlds
+.rws_cache/
+saves/
+*.rws
+node_modules/
+.DS_Store

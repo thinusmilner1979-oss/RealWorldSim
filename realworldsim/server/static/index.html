@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RealWorldSim</title>
+<link rel="stylesheet" href="/static/vendor/uPlot.min.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand">
+    <span class="logo">◉</span>
+    <div>
+      <div class="title">RealWorldSim</div>
+      <div class="sub">world model · <span id="seedlabel">seed 42</span></div>
+    </div>
+  </div>
+
+  <div class="clock">
+    <div class="date" id="date">—</div>
+    <div class="day" id="daycount">day 0</div>
+  </div>
+
+  <div class="controls">
+    <button id="btn-step" title="Advance one day">+1d</button>
+    <button id="btn-step-m" title="Advance one month">+1m</button>
+    <button id="btn-play" class="primary" title="Play / pause (space)">▶</button>
+    <select id="speed" title="Simulated time per real second">
+      <option value="1">1 day / s</option>
+      <option value="7">1 week / s</option>
+      <option value="30" selected>1 month / s</option>
+      <option value="91">1 quarter / s</option>
+      <option value="365">1 year / s</option>
+      <option value="1825">5 years / s</option>
+      <option value="3650">10 years / s</option>
+    </select>
+    <label class="runto">to <input id="runto" type="number" min="2025" max="2200" step="1" placeholder="year"><button id="btn-runto">go</button></label>
+    <span class="sep"></span>
+    <button id="btn-reset" title="New world">reset</button>
+    <input id="seed" type="number" value="42" title="Random seed" class="seed">
+    <button id="btn-save" title="Save world">save</button>
+    <button id="btn-load" title="Load world">load</button>
+    <a id="btn-csv" href="/api/export/csv" title="Download global history as CSV">csv</a>
+  </div>
+</header>
+
+<section id="kpis">
+  <div class="kpi"><div class="k">World GDP</div><div class="v" id="k-gdp">—</div></div>
+  <div class="kpi"><div class="k">Growth</div><div class="v" id="k-growth">—</div></div>
+  <div class="kpi"><div class="k">Inflation</div><div class="v" id="k-infl">—</div></div>
+  <div class="kpi"><div class="k">Brent oil</div><div class="v" id="k-oil">—</div><div class="d" id="d-oil"></div></div>
+  <div class="kpi"><div class="k">EU gas</div><div class="v" id="k-gas">—</div><div class="d" id="d-gas"></div></div>
+  <div class="kpi"><div class="k">Wheat</div><div class="v" id="k-wheat">—</div><div class="d" id="d-wheat"></div></div>
+  <div class="kpi"><div class="k">Gold</div><div class="v" id="k-gold">—</div><div class="d" id="d-gold"></div></div>
+  <div class="kpi"><div class="k">Active wars</div><div class="v" id="k-wars">—</div></div>
+  <div class="kpi"><div class="k">Refugees</div><div class="v" id="k-ref">—</div></div>
+  <div class="kpi risk"><div class="k">Global risk</div><div class="v" id="k-risk">—</div><div class="bar"><i id="k-riskbar"></i></div></div>
+</section>
+
+<main>
+  <section id="mapwrap">
+    <div id="metrics" class="chips"></div>
+    <svg id="map" aria-label="World map coloured by the selected metric"></svg>
+    <div id="legend"></div>
+    <div id="tooltip" class="tip" hidden></div>
+    <div id="chokes" class="chokes"></div>
+  </section>
+
+  <aside id="side">
+    <nav class="tabs">
+      <button data-tab="feed" class="active">Feed</button>
+      <button data-tab="country">Country</button>
+      <button data-tab="intervene">Intervene</button>
+      <button data-tab="about">?</button>
+    </nav>
+
+    <div id="tab-feed" class="tab active">
+      <div class="hotspots">
+        <div class="h">Hotspots <span class="muted">(pairwise tension)</span></div>
+        <ol id="hotspots"></ol>
+      </div>
+      <div class="h">Conflicts</div>
+      <ul id="conflicts" class="conflicts"></ul>
+      <div class="h">Wire <span class="muted" id="feedcount"></span></div>
+      <ul id="feed" class="feed"></ul>
+    </div>
+
+    <div id="tab-country" class="tab">
+      <div id="country-empty" class="muted pad">Click a country on the map.</div>
+      <div id="country" hidden>
+        <div class="cname"><span id="c-name"></span> <span class="iso" id="c-iso"></span></div>
+        <div class="cmeta" id="c-meta"></div>
+        <div class="grid2" id="c-stats"></div>
+        <div class="h">History</div>
+        <div class="cchart" id="cc-gdp"></div>
+        <div class="cchart" id="cc-macro"></div>
+        <div class="cchart" id="cc-social"></div>
+        <div class="h">Relations</div>
+        <div id="c-rel"></div>
+      </div>
+    </div>
+
+    <div id="tab-intervene" class="tab">
+      <p class="muted pad">Perturb the world and watch it respond. Every intervention is logged to the wire with a <b>[USER]</b> tag.</p>
+
+      <div class="panel">
+        <div class="h">Tension &amp; war</div>
+        <div class="row"><select id="iv-a" class="cc"></select><span class="vs">↔</span><select id="iv-b" class="cc"></select></div>
+        <div class="row"><label>tension <output id="iv-tval">0.90</output></label><input id="iv-t" type="range" min="0" max="1" step="0.01" value="0.9"><button id="iv-set-t">set</button></div>
+        <div class="row"><label>intensity <output id="iv-ival">0.50</output></label><input id="iv-i" type="range" min="0.05" max="1" step="0.05" value="0.5"><button id="iv-war" class="danger">declare war</button></div>
+        <div class="row"><button id="iv-sanction">A sanctions B</button><button id="iv-nato">NATO+EU sanction B</button></div>
+      </div>
+
+      <div class="panel">
+        <div class="h">Energy</div>
+        <div class="row"><label>oil supply shock <output id="iv-oval">0%</output></label><input id="iv-o" type="range" min="-20" max="60" step="1" value="0"><button id="iv-oil">apply</button></div>
+        <div class="row wrap" id="iv-chokes"></div>
+      </div>
+
+      <div class="panel">
+        <div class="h">Country shock</div>
+        <div class="row"><select id="iv-c" class="cc"></select>
+          <select id="iv-shock"></select><button id="iv-doshock">hit</button></div>
+        <div class="row"><select id="iv-field"></select><input id="iv-val" type="number" step="any" placeholder="value"><button id="iv-setvar">set</button></div>
+      </div>
+
+      <div class="panel">
+        <div class="h">Active conflicts</div>
+        <ul id="iv-conflicts" class="conflicts"></ul>
+      </div>
+    </div>
+
+    <div id="tab-about" class="tab pad">
+      <h3>What is this?</h3>
+      <p>A probabilistic world model. Every country on earth is simulated day by day: growth, inflation, interest rates, debt, currencies, oil and gas, food, unrest, tension, war.</p>
+      <p>It is <b>not a forecast</b>. It is one plausible future drawn from a distribution — change the seed and you get another. The useful question is never "what happens?" but "what happens in most runs?"</p>
+      <p>Seeded from real public data (Natural Earth, and World Bank / UCDP / GDELT / FRED via <code>rws sync</code>). Open source, MIT. <a href="https://github.com/thinusmilner1979-oss/RealWorldSim" target="_blank" rel="noopener">github.com/thinusmilner1979-oss/RealWorldSim</a></p>
+      <h3>Keys</h3>
+      <p><kbd>space</kbd> play/pause · <kbd>.</kbd> step a day · <kbd>&gt;</kbd> step a month · <kbd>esc</kbd> deselect</p>
+      <div id="live-note" class="muted"></div>
+    </div>
+  </aside>
+</main>
+
+<section id="charts">
+  <div class="chart"><div class="ch">Commodities <span class="muted">indexed, start = 100</span></div><div id="ch-comm"></div></div>
+  <div class="chart"><div class="ch">World growth &amp; inflation <span class="muted">% GDP-weighted</span></div><div id="ch-macro"></div></div>
+  <div class="chart"><div class="ch">Global risk &amp; active wars</div><div id="ch-risk"></div></div>
+</section>
+
+<script src="/static/vendor/d3.min.js"></script>
+<script src="/static/vendor/uPlot.iife.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
