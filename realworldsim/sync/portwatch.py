@@ -13,7 +13,8 @@ from .http import get_json
 
 BASE = ("https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Daily_Chokepoints_Data/"
         "FeatureServer/0/query?where=date>%3DDATE'{start}'&outFields=portname,date,n_total&f=json"
-        "&resultRecordCount=20000&orderByFields=date")
+        "&resultRecordCount=1000&resultOffset={offset}&orderByFields=date%20DESC")
+MAX_PAGES = 20  # ~28 chokepoints x 400 days / 1000 rows per page
 
 NAME_MAP = {
     "Strait of Hormuz": "hormuz", "Bab el-Mandeb Strait": "bab_el_mandeb", "Suez Canal": "suez",
@@ -62,8 +63,14 @@ def disruption(features: list[dict], today: date | None = None) -> dict[str, dic
 
 def fetch(cache: Path, verbose: bool = False) -> dict:
     start = (date.today() - timedelta(days=400)).isoformat()
-    payload = get_json(BASE.format(start=start), timeout=120)
-    feats = payload.get("features", [])
+    feats: list[dict] = []
+    payload: dict = {}
+    for page in range(MAX_PAGES):
+        payload = get_json(BASE.format(start=start, offset=page * 1000), timeout=120)
+        batch = payload.get("features", [])
+        feats.extend(batch)
+        if len(batch) < 1000 or not payload.get("exceededTransferLimit", True):
+            break
     if not feats:
         if verbose:
             print(f"  no features; response keys: {list(payload)[:6]} {str(payload)[:200]}")

@@ -96,3 +96,12 @@ def test_portwatch_disruption():
         feats.append({"attributes": {"portname": "Bab el-Mandeb Strait", "date": ts_ms, "n_total": n}})
     out = portwatch.disruption(feats, today)
     assert 0.6 < out["bab_el_mandeb"]["disruption"] < 0.7
+
+
+def test_yahoo_parse():
+    from realworldsim.sync import stooq
+    ok = {"chart": {"result": [{"meta": {"regularMarketPrice": 3612.3}, "indicators": {"quote": [{"close": [1, 2]}]}}]}}
+    assert stooq.parse_yahoo(ok) == 3612.3
+    no_meta = {"chart": {"result": [{"meta": {}, "indicators": {"quote": [{"close": [3500.0, None]}]}}]}}
+    assert stooq.parse_yahoo(no_meta) == 3500.0
+    assert stooq.parse_yahoo({"chart": {"result": None}}) is None

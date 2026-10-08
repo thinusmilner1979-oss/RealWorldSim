@@ -23,8 +23,8 @@ def get(url: str, timeout: int = 60, browser: bool = False) -> bytes:
         return data
 
 
-def get_json(url: str, timeout: int = 60) -> Any:
-    return json.loads(get(url, timeout).decode("utf-8"))
+def get_json(url: str, timeout: int = 60, browser: bool = False) -> Any:
+    return json.loads(get(url, timeout, browser).decode("utf-8"))
 
 
 def get_text(url: str, timeout: int = 60, browser: bool = False) -> str:

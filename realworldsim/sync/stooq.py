@@ -1,5 +1,8 @@
-"""Spot prices without a key: Stooq CSV quotes, with the World Bank monthly commodity
-"Pink Sheet" (gold, urea, oil, wheat, copper) as the fallback when Stooq refuses.
+"""Spot prices without a key. In order of preference:
+
+1. Yahoo Finance chart endpoint (gold GC=F, Brent BZ=F, copper HG=F, wheat ZW=F, gas NG=F)
+2. Stooq CSV quotes (historically keyless; currently returning 404)
+3. World Bank monthly commodity "Pink Sheet" - a dated snapshot, used only as a last resort
 
 https://stooq.com/q/l/?s=xauusd&f=sd2t2ohlcv&h&e=csv
 https://www.worldbank.org/en/research/commodity-markets  (CMO-Historical-Data-Monthly.xlsx)
@@ -14,6 +17,9 @@ GOLDPRICE = "https://data-asg.goldprice.org/dbXRates/USD"  # keyless JSON, somet
 PINK_SHEET = ("https://thedocs.worldbank.org/en/doc/5d903e848db1d1b83e0ec8f744e55570-0350012021/related/"
               "CMO-Historical-Data-Monthly.xlsx")
 URL_HIST = "https://stooq.com/q/d/l/?s={sym}&i=d"  # alternative endpoint: full daily history CSV
+YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d"
+YAHOO_SYMBOLS = {"gold": ("GC=F", 1.0), "oil": ("BZ=F", 1.0), "copper": ("HG=F", 1.0),
+                 "wheat": ("ZW=F", 1 / 100.0), "gas": ("NG=F", 1.0)}
 # Pink Sheet column header (as in the sheet) -> (our key, scale)
 PINK_COLS = {"Gold": ("gold", 1.0), "Crude oil, Brent": ("oil", 1.0), "Copper": ("copper", 1 / 2204.6),
              "Wheat, US HRW": ("wheat", 1 / 36.74), "Urea": ("fertilizer", 1.0),
@@ -46,6 +52,19 @@ def parse(csv_text: str) -> float | None:
         except (ValueError, IndexError):
             continue
     return None
+
+
+def parse_yahoo(payload: dict) -> float | None:
+    """Last regular-market price from a Yahoo chart response."""
+    try:
+        res = payload["chart"]["result"][0]
+        meta = res.get("meta", {})
+        if meta.get("regularMarketPrice") is not None:
+            return float(meta["regularMarketPrice"])
+        closes = [c for c in res["indicators"]["quote"][0]["close"] if c is not None]
+        return float(closes[-1]) if closes else None
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
 
 
 def parse_pink_sheet(xlsx_bytes: bytes) -> dict[str, float]:
@@ -81,7 +100,20 @@ def parse_pink_sheet(xlsx_bytes: bytes) -> dict[str, float]:
 
 def fetch(cache: Path, verbose: bool = False) -> dict:
     prices = {}
+    for key, (sym, scale) in YAHOO_SYMBOLS.items():
+        try:
+            v = parse_yahoo(get_json(YAHOO.format(sym=sym), timeout=30, browser=True))
+        except Exception as e:  # noqa: BLE001
+            if verbose:
+                print(f"  yahoo {sym}: {e}")
+            continue
+        if v:
+            prices[key] = round(v * scale, 3)
+            if verbose:
+                print(f"  {key:<7} {prices[key]} (yahoo {sym})")
     for key, (sym, scale) in SERIES.items():
+        if key in prices:
+            continue
         v = None
         for url in (URL.format(sym=sym), URL_HIST.format(sym=sym)):
             try:
@@ -102,10 +134,12 @@ def fetch(cache: Path, verbose: bool = False) -> dict:
 
             pink = parse_pink_sheet(get(PINK_SHEET, timeout=180, browser=True))
             month = pink.pop("_month", "?")
-            for k, v in pink.items():
-                prices.setdefault(k, v)
-            if verbose and pink:
-                print(f"  world bank pink sheet ({month}):", ", ".join(f"{k} {v}" for k, v in pink.items()))
+            used = {k: v for k, v in pink.items() if k not in prices}
+            for k, v in used.items():
+                prices[k] = v
+            if verbose and used:
+                print(f"  world bank pink sheet ({month}, dated snapshot, last resort):",
+                      ", ".join(f"{k} {v}" for k, v in used.items()))
         except Exception as e:  # noqa: BLE001
             if verbose:
                 print(f"  world bank pink sheet: {e}")
