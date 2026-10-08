@@ -10,7 +10,9 @@ Phases, roughly in order. Each bullet is meant to become a GitHub issue; claim o
 - [x] Docs, tests, Mint launcher
 
 ## 0.2 — believe it a little more
-- [ ] **Backtest harness**: initialise at 2015-01-01 from World Bank/UCDP history, run to today, score coverage of actual GDP/inflation/oil paths and conflict onsets (Brier score). Make it `rws backtest`.
+- [x] **Backtest harness**: `rws backtest` — 2015 start state, parallel ensemble, scored against a 2015–2025 scorecard (see docs/BACKTESTING.md). Baseline composite 0.53.
+- [ ] Backtest-driven fixes, biggest first: a pandemic/stimulus inflation channel; OPEC and demand shocks for oil; reserves + external debt + IMF for defaults; insurgent groups as actors
+- [ ] More start years (2000, 2008) and a scorecard for each; country-level scoring for all countries from World Bank history
 - [ ] **Ensemble mode**: `rws ensemble --runs 100` producing fan charts and event probabilities ("P(ceasefire in Ukraine by 2027)"); UI view for it.
 - [ ] Trade matrix from real bilateral data (UN Comtrade / CEPII BACI) instead of gravity
 - [ ] Policy rates from BIS; IMF WEO forecasts as the growth-trend prior

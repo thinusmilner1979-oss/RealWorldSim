@@ -39,10 +39,24 @@ def cmd_run(a: argparse.Namespace) -> None:
 
 
 def cmd_sync(a: argparse.Namespace) -> None:
+    if a.history:
+        from .backtest.history import fetch_history
+
+        for year in a.history:
+            out = fetch_history(year, Path(a.cache), verbose=True)
+            print(f"wrote {out}")
+        return
     from .sync import sync_all
 
     out = sync_all(Path(a.cache), sources=a.sources, verbose=True)
     print(f"wrote {out}")
+
+
+def cmd_backtest(a: argparse.Namespace) -> None:
+    from .backtest import run_backtest
+
+    run_backtest(start=a.start, end=a.end, runs=a.runs, workers=a.workers,
+                 cache=Path(a.cache) if a.cache else None, out_dir=Path(a.out))
 
 
 def cmd_seed(a: argparse.Namespace) -> None:
@@ -59,7 +73,7 @@ def main(argv: list[str] | None = None) -> None:
 
     s = sub.add_parser("serve", help="start the web UI")
     s.add_argument("--host", default="127.0.0.1")
-    s.add_argument("--port", type=int, default=8765)
+    s.add_argument("--port", type=int, default=8050)
     s.add_argument("--seed", type=int, default=42)
     s.add_argument("--start", help="simulation start date (ISO), default today")
     s.add_argument("--cache", default=".rws_cache", help="directory holding live-sync data")
@@ -79,7 +93,18 @@ def main(argv: list[str] | None = None) -> None:
     y.add_argument("--cache", default=".rws_cache")
     y.add_argument("--sources", nargs="*", default=None,
                    help="subset of: worldbank ucdp gdelt fred (default: all)")
+    y.add_argument("--history", nargs="*", type=int, metavar="YEAR",
+                   help="instead of today's data, fetch World Bank values for these years (for backtests)")
     y.set_defaults(fn=cmd_sync)
+
+    b = sub.add_parser("backtest", help="start in the past, run an ensemble, score it against what happened")
+    b.add_argument("--start", default="2015-01-01", help="scenario start date (a bundled data/history/<year>.json)")
+    b.add_argument("--end", default="2025-01-01")
+    b.add_argument("--runs", type=int, default=20, help="ensemble size (seeds 0..runs-1)")
+    b.add_argument("--workers", type=int, default=None, help="parallel processes (default: all cores)")
+    b.add_argument("--cache", default=".rws_cache", help="where `rws sync --history` put sourced values")
+    b.add_argument("--out", default="backtests", help="directory for JSON reports")
+    b.set_defaults(fn=cmd_backtest)
 
     d = sub.add_parser("seed", help="rebuild bundled seed data from Natural Earth")
     d.add_argument("file", nargs="?", help="local ne_50m_admin_0_countries.geojson (else download)")

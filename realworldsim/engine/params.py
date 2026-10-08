@@ -42,6 +42,8 @@ class MacroParams:
     stabiliser: float = 0.5
     # Debt crisis threshold (debt/GDP %, before income-group adjustment)
     debt_crisis_threshold: float = 130.0
+    # Base annual default hazard for fragile, indebted, inflationary states (at debt=100%, stability=0)
+    default_base_hazard: float = 0.06
     # Random daily macro noise (annualised pp)
     growth_noise: float = 1.2
     inflation_noise: float = 0.6
@@ -58,12 +60,12 @@ class CommodityParams:
     gas_elasticity: float = 3.0
     food_elasticity: float = 1.5
     # Mean reversion toward long-run anchor (per year)
-    oil_reversion: float = 0.25
+    oil_reversion: float = 0.12
     gas_reversion: float = 0.35
     food_reversion: float = 0.4
     metal_reversion: float = 0.3
     # Daily log-noise
-    oil_noise: float = 0.015
+    oil_noise: float = 0.02
     gas_noise: float = 0.025
     food_noise: float = 0.010
     metal_noise: float = 0.008
@@ -93,7 +95,7 @@ class GeoParams:
     # Trade dampens tension (per unit bilateral trade share)
     trade_damping: float = 0.4
     # War outbreak: base annual hazard at tension=threshold, logistic width
-    war_hazard: float = 0.08
+    war_hazard: float = 0.16
     war_threshold: float = 0.82
     war_width: float = 0.06
     nuclear_deterrence: float = 0.25  # multiply hazard if both nuclear
@@ -101,7 +103,7 @@ class GeoParams:
     # War dynamics
     escalation_drift: float = 0.0
     intensity_noise: float = 0.02
-    ceasefire_base_hazard: float = 0.35  # annual, grows with duration and damage
+    ceasefire_base_hazard: float = 0.18  # annual, grows with duration and damage
     war_weariness: float = 0.3
     # Civil unrest
     unrest_decay: float = 0.9  # per year
@@ -113,7 +115,12 @@ class GeoParams:
     # Political crisis hazards (annual) when unrest high
     coup_hazard: float = 0.25
     gov_fall_hazard: float = 0.4
-    civil_war_hazard: float = 0.08
+    civil_war_hazard: float = 0.16
+    # Base rates independent of acute unrest (the world produces ~3 coups and ~3-5 sovereign
+    # defaults a year even in calm times): annual hazard at full fragility
+    coup_base_hazard: float = 0.12
+    gov_fall_base_hazard: float = 0.10
+
     # Sanction effects
     sanction_growth: float = 3.0  # growth drag at 100% of trade sanctioned
     sanction_inflation: float = 4.0
@@ -127,10 +134,11 @@ class GeoParams:
 class EventParams:
     # Annual hazards of exogenous shocks
     disaster_hazard: float = 1.5  # per year worldwide (scaled by exposure)
-    pandemic_hazard: float = 0.03
+    pandemic_hazard: float = 0.05
     financial_crisis_hazard: float = 0.06
     tech_boom_hazard: float = 0.08
     drought_hazard: float = 0.6
+    bumper_harvest_hazard: float = 0.6
     cyberattack_hazard: float = 0.5
     terror_hazard: float = 1.0
 

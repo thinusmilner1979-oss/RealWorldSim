@@ -74,6 +74,7 @@ class Conflict:
     days: int = 0
     ended: date | None = None
     peak: float = 0.0
+    major: bool = False  # has crossed into major war (intensity >= 0.6) since it was last low
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -88,11 +89,25 @@ class Conflict:
 class World:
     """Vectorised state of all countries plus pairwise matrices and markets."""
 
-    def __init__(self, seed_dir: Path | None = None, cache_dir: Path | None = None):
+    def __init__(self, seed_dir: Path | None = None, cache_dir: Path | None = None,
+                 scenario: dict | None = None, use_live: bool = True):
+        """
+        scenario: optional dict shaped like overrides.json that is merged on top of it -
+                  used to start the world at a historical date (see backtest/).
+                  Keys: countries (merge per country), rivalries (merge), unrest (merge),
+                  commodities (merge), active_conflicts (replace), sanction_targets (replace),
+                  alliances (replace).
+        use_live: apply the `rws sync` cache if present (switched off for backtests).
+        """
         seed_dir = seed_dir or DATA_DIR
         meta = json.loads((seed_dir / "countries.json").read_text())
         overrides = json.loads((seed_dir / "overrides.json").read_text())
-        live = self._load_live_cache(cache_dir)
+        if scenario:
+            overrides = merge_scenario(overrides, scenario)
+        live = self._load_live_cache(cache_dir) if use_live else {}
+        self.sanction_targets: dict[str, float] = overrides.get(
+            "sanction_targets",
+            {"RUS": 1.0, "IRN": 1.0, "PRK": 1.0, "BLR": 0.8, "VEN": 0.6, "SYR": 0.8, "MMR": 0.6, "CUB": 0.5})
 
         self.countries: list[dict] = meta["countries"]
         self.iso = [c["iso3"] for c in self.countries]
@@ -205,7 +220,7 @@ class World:
                         id=c["id"], name=c["name"], a=c["a"], b=c["b"], intensity=c["intensity"],
                         started=date.fromisoformat(c["started"]), type=c.get("type", "interstate"),
                         supporters_a=c.get("supporters_a", []), supporters_b=c.get("supporters_b", []),
-                        spillover=c.get("spillover", []), peak=c["intensity"],
+                        spillover=c.get("spillover", []), peak=c["intensity"], major=c["intensity"] >= 0.6,
                     )
                 )
         # live conflict intensities (UCDP battle deaths) adjust seeded conflicts and add missing ones
@@ -290,7 +305,7 @@ class World:
 
     def _seed_sanctions(self) -> None:
         west = [c for c in self.alliances["NATO"] + self.alliances["EU"] + ["AUS", "JPN", "KOR", "NZL", "CHE", "TWN"]]
-        targets = {"RUS": 1.0, "IRN": 1.0, "PRK": 1.0, "BLR": 0.8, "VEN": 0.6, "SYR": 0.8, "MMR": 0.6, "CUB": 0.5}
+        targets = self.sanction_targets
         for tgt, strength in targets.items():
             if tgt not in self.index:
                 continue
@@ -364,3 +379,19 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     a = (0.5 - math.cos((lat2 - lat1) * p) / 2
          + math.cos(lat1 * p) * math.cos(lat2 * p) * (1 - math.cos((lon2 - lon1) * p)) / 2)
     return 12742 * math.asin(math.sqrt(a))
+
+
+def merge_scenario(base: dict, scenario: dict) -> dict:
+    """Merge a scenario dict over the bundled overrides (see World.__init__)."""
+    out = json.loads(json.dumps(base))  # deep copy
+    for iso, vals in scenario.get("countries", {}).items():
+        out["countries"].setdefault(iso, {}).update(vals)
+    for key in ("rivalries", "unrest"):
+        out[key].update(scenario.get(key, {}))
+    for k, v in scenario.get("commodities", {}).items():
+        if k in out["commodities"] and isinstance(v, dict):
+            out["commodities"][k].update(v)
+    for key in ("active_conflicts", "sanction_targets", "alliances"):
+        if key in scenario:
+            out[key] = scenario[key]
+    return out

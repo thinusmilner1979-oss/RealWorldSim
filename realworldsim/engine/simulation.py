@@ -66,11 +66,11 @@ class History:
 
 class Simulation:
     def __init__(self, seed: int = 42, start: date | None = None, params: Params | None = None,
-                 cache_dir: Path | None = None):
+                 cache_dir: Path | None = None, scenario: dict | None = None, use_live: bool = True):
         self.seed = seed
         self.rng = np.random.default_rng(seed)
         self.params = params or Params()
-        self.world = World(cache_dir=cache_dir)
+        self.world = World(cache_dir=cache_dir, scenario=scenario, use_live=use_live)
         self.start = start or date.today()
         self.today = self.start
         self.day = 0

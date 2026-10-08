@@ -65,6 +65,11 @@ def step_events(world: World, p: EventParams, es: EventState, rng: np.random.Gen
         market_state.drought = min(1.0, market_state.drought + sev)
         events.append({"type": "drought", "country": None, "severity": 0.5,
                        "text": "Severe drought hits major grain-exporting regions; harvest forecasts cut"})
+    if rng.random() < _p(p.bumper_harvest_hazard):
+        sev = float(np.clip(rng.normal(0.4, 0.15), 0.1, 0.8))
+        market_state.drought = max(-1.0, market_state.drought - sev)
+        events.append({"type": "harvest", "country": None, "severity": 0.2,
+                       "text": "Record harvests in major exporters push grain prices lower"})
 
     # ---- pandemic -------------------------------------------------------------
     if es.pandemic_days == 0 and rng.random() < _p(p.pandemic_hazard):

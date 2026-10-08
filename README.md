@@ -10,7 +10,7 @@ Think of it as a weather model, but for the world: initialise from today's obser
 
 RealWorldSim is a **probabilistic scenario engine**, not an oracle. Run it once and you get *one* plausible future. Change the seed and you get another. The useful question is never "what will happen?" but "what happens in most runs, and what makes the difference?"
 
-The world does not obey known equations the way the atmosphere does. Nobody has a formula for whether a government falls next month. So the model is deliberately a *reduced-form* one: simple, well-behaved relationships with sensible feedback loops, tuned to produce plausible macro numbers and dramatic-but-not-absurd geopolitics. Its accuracy today is unknown and probably poor. Making it measurably better — by backtesting against history — is the whole point of the project, and the roadmap below is built around that.
+The world does not obey known equations the way the atmosphere does. Nobody has a formula for whether a government falls next month. So the model is deliberately a *reduced-form* one: simple, well-behaved relationships with sensible feedback loops, tuned to produce plausible macro numbers and dramatic-but-not-absurd geopolitics. Its accuracy is measured, not assumed: `rws backtest` starts the world in 2015, runs an ensemble to 2025 and scores it against what actually happened. The current score is poor (composite 0.53 of 1; see [docs/BACKTESTING.md](docs/BACKTESTING.md)) and the project is organised around moving it.
 
 ## Quick start
 
@@ -21,7 +21,7 @@ git clone https://github.com/thinusmilner1979-oss/RealWorldSim.git
 cd RealWorldSim
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e .
-rws serve            # opens http://127.0.0.1:8765 in your browser
+rws serve            # opens http://127.0.0.1:8050 in your browser
 ```
 
 Headless, no UI:
@@ -35,6 +35,12 @@ Pull today's real figures (World Bank, UCDP, GDELT, FRED — all free, no keys) 
 ```bash
 rws sync             # writes .rws_cache/live_seed.json
 rws serve            # picks the cache up automatically
+```
+
+Backtest it — start in 2015, run an ensemble to 2025, score it against what actually happened:
+
+```bash
+rws backtest --runs 50        # see docs/BACKTESTING.md for what the numbers mean
 ```
 
 Linux Mint desktop launcher (creates a venv, installs, adds a menu entry):
@@ -63,6 +69,7 @@ Short version (the long version is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.m
 | **Geopolitics** (`engine/geopolitics.py`) | A 195×195 tension matrix driven by rivalries, geography, alliances, sanctions, arms build-ups, trade and spill-over. Wars break out stochastically at high tension, damped by nuclear deterrence, extended deterrence and the democratic peace; they escalate, exhaust, and end. Unrest rises with inflation surprises, unemployment, food prices and economic collapse; high unrest topples governments, triggers coups or civil wars. Refugees flow to neighbours. |
 | **Events** (`engine/events.py`) | Exogenous shocks: natural disasters, droughts, pandemics, financial crises, technology booms, cyber-attacks, terror. |
 | **Data** (`sync/`, `data/`) | Bundled seed from Natural Earth plus curated 2025 estimates; live sync from World Bank, UCDP, GDELT and FRED. |
+| **Backtest** (`backtest/`) | 2015 start state, parallel ensemble, scorecard of real outcomes, coverage / Brier / false-alarm scores. |
 
 All tunable constants are in `engine/params.py`.
 

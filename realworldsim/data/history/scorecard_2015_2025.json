@@ -1,0 +1,62 @@
+{
+ "_note": "What actually happened, 2015-2024, for scoring backtests. Yearly figures are approximate public-record values (World Bank world aggregates, EIA/FRED Brent annual averages). Events list the major things a world model should have given non-trivial probability to. Dates are onset dates; 'window' is the +/- tolerance in years when scoring timing.",
+ "start": "2015-01-01",
+ "end": "2025-01-01",
+ "series": {
+  "world_growth":    {"2015": 2.9, "2016": 2.6, "2017": 3.3, "2018": 3.3, "2019": 2.6, "2020": -3.1, "2021": 6.2, "2022": 3.1, "2023": 2.7, "2024": 2.7},
+  "world_inflation": {"2015": 1.4, "2016": 1.5, "2017": 2.2, "2018": 2.4, "2019": 2.2, "2020": 1.9, "2021": 3.5, "2022": 8.0, "2023": 5.8, "2024": 4.0},
+  "oil":             {"2015": 52.4, "2016": 43.7, "2017": 54.2, "2018": 71.3, "2019": 64.3, "2020": 41.8, "2021": 70.9, "2022": 100.9, "2023": 82.5, "2024": 80.5},
+  "gold":            {"2015": 1160, "2016": 1250, "2017": 1257, "2018": 1269, "2019": 1393, "2020": 1770, "2021": 1799, "2022": 1800, "2023": 1941, "2024": 2386},
+  "wheat":           {"2015": 5.0, "2016": 4.3, "2017": 4.4, "2018": 5.0, "2019": 4.9, "2020": 5.3, "2021": 7.0, "2022": 9.0, "2023": 6.3, "2024": 5.7},
+  "active_wars":     {"2015": 16, "2016": 16, "2017": 15, "2018": 14, "2019": 14, "2020": 14, "2021": 14, "2022": 15, "2023": 15, "2024": 15}
+ },
+ "country_series": {
+  "USA": {"growth": {"2015": 2.9, "2016": 1.8, "2017": 2.5, "2018": 3.0, "2019": 2.5, "2020": -2.2, "2021": 6.1, "2022": 2.5, "2023": 2.9, "2024": 2.8},
+          "inflation": {"2015": 0.1, "2016": 1.3, "2017": 2.1, "2018": 2.4, "2019": 1.8, "2020": 1.2, "2021": 4.7, "2022": 8.0, "2023": 4.1, "2024": 2.9}},
+  "CHN": {"growth": {"2015": 7.0, "2016": 6.9, "2017": 6.9, "2018": 6.8, "2019": 6.0, "2020": 2.2, "2021": 8.4, "2022": 3.0, "2023": 5.2, "2024": 5.0}},
+  "DEU": {"growth": {"2015": 1.5, "2016": 2.2, "2017": 2.7, "2018": 1.0, "2019": 1.1, "2020": -3.8, "2021": 3.2, "2022": 1.8, "2023": -0.3, "2024": -0.2},
+          "inflation": {"2015": 0.1, "2016": 0.5, "2017": 1.5, "2018": 1.7, "2019": 1.4, "2020": 0.5, "2021": 3.1, "2022": 6.9, "2023": 5.9, "2024": 2.2}},
+  "ZAF": {"growth": {"2015": 1.3, "2016": 0.7, "2017": 1.2, "2018": 1.6, "2019": 0.3, "2020": -6.2, "2021": 5.0, "2022": 1.9, "2023": 0.7, "2024": 0.6},
+          "inflation": {"2015": 4.6, "2016": 6.3, "2017": 5.3, "2018": 4.6, "2019": 4.1, "2020": 3.3, "2021": 4.6, "2022": 6.9, "2023": 5.9, "2024": 4.4}},
+  "RUS": {"growth": {"2015": -2.0, "2016": 0.2, "2017": 1.8, "2018": 2.8, "2019": 2.2, "2020": -2.7, "2021": 5.9, "2022": -1.2, "2023": 3.6, "2024": 4.1}},
+  "TUR": {"inflation": {"2015": 7.7, "2016": 7.8, "2017": 11.1, "2018": 16.3, "2019": 15.2, "2020": 12.3, "2021": 19.6, "2022": 72.3, "2023": 53.9, "2024": 58.5}},
+  "ARG": {"inflation": {"2015": 27, "2016": 40, "2017": 25.7, "2018": 34.3, "2019": 53.5, "2020": 42.0, "2021": 48.4, "2022": 72.4, "2023": 133.5, "2024": 219.9}}
+ },
+ "events": [
+  {"id": "covid", "type": "pandemic", "date": "2020-03-11", "window": 3, "desc": "COVID-19 pandemic"},
+  {"id": "ukraine_2022", "type": "war_start", "a": "RUS", "b": "UKR", "date": "2022-02-24", "window": 2, "desc": "Russia's full-scale invasion of Ukraine"},
+  {"id": "karabakh_2020", "type": "war_start", "a": "AZE", "b": "ARM", "date": "2020-09-27", "window": 2, "desc": "Second Nagorno-Karabakh war"},
+  {"id": "gaza_2023", "type": "war_start", "a": "ISR", "b": "PSE", "date": "2023-10-07", "window": 2, "desc": "Israel-Gaza war"},
+  {"id": "israel_iran_2024", "type": "war_start", "a": "ISR", "b": "IRN", "date": "2024-04-13", "window": 2, "desc": "Direct Israel-Iran strikes"},
+  {"id": "tigray_2020", "type": "civil_war", "country": "ETH", "date": "2020-11-04", "window": 2, "desc": "Tigray war"},
+  {"id": "sudan_2023", "type": "civil_war", "country": "SDN", "date": "2023-04-15", "window": 2, "desc": "Sudan civil war (SAF vs RSF)"},
+  {"id": "myanmar_coup", "type": "coup", "country": "MMR", "date": "2021-02-01", "window": 2, "desc": "Myanmar coup"},
+  {"id": "mali_coup", "type": "coup", "country": "MLI", "date": "2020-08-18", "window": 2, "desc": "Mali coup"},
+  {"id": "burkina_coup", "type": "coup", "country": "BFA", "date": "2022-01-24", "window": 2, "desc": "Burkina Faso coup"},
+  {"id": "niger_coup", "type": "coup", "country": "NER", "date": "2023-07-26", "window": 2, "desc": "Niger coup"},
+  {"id": "guinea_coup", "type": "coup", "country": "GIN", "date": "2021-09-05", "window": 2, "desc": "Guinea coup"},
+  {"id": "sudan_coup_2019", "type": "coup", "country": "SDN", "date": "2019-04-11", "window": 2, "desc": "Sudan: Bashir ousted"},
+  {"id": "zimbabwe_coup", "type": "coup", "country": "ZWE", "date": "2017-11-15", "window": 2, "desc": "Zimbabwe: Mugabe ousted"},
+  {"id": "turkey_coup_attempt", "type": "coup", "country": "TUR", "date": "2016-07-15", "window": 2, "desc": "Turkey coup attempt (failed)"},
+  {"id": "srilanka_default", "type": "debt_crisis", "country": "LKA", "date": "2022-04-12", "window": 2, "desc": "Sri Lanka default"},
+  {"id": "lebanon_default", "type": "debt_crisis", "country": "LBN", "date": "2020-03-07", "window": 2, "desc": "Lebanon default"},
+  {"id": "zambia_default", "type": "debt_crisis", "country": "ZMB", "date": "2020-11-13", "window": 2, "desc": "Zambia default"},
+  {"id": "ghana_default", "type": "debt_crisis", "country": "GHA", "date": "2022-12-19", "window": 2, "desc": "Ghana default"},
+  {"id": "argentina_default", "type": "debt_crisis", "country": "ARG", "date": "2020-05-22", "window": 2, "desc": "Argentina default"},
+  {"id": "venezuela_default", "type": "debt_crisis", "country": "VEN", "date": "2017-11-13", "window": 2, "desc": "Venezuela default"},
+  {"id": "ukraine_debt_2022", "type": "debt_crisis", "country": "UKR", "date": "2022-08-10", "window": 2, "desc": "Ukraine debt freeze"},
+  {"id": "brexit_gov", "type": "government_falls", "country": "GBR", "date": "2016-06-24", "window": 2, "desc": "UK: Cameron resigns after Brexit vote"},
+  {"id": "lebanon_2019", "type": "government_falls", "country": "LBN", "date": "2019-10-29", "window": 2, "desc": "Lebanon: Hariri resigns amid protests"},
+  {"id": "srilanka_2022", "type": "government_falls", "country": "LKA", "date": "2022-07-13", "window": 2, "desc": "Sri Lanka: president flees"},
+  {"id": "bangladesh_2024", "type": "government_falls", "country": "BGD", "date": "2024-08-05", "window": 2, "desc": "Bangladesh: Hasina ousted"},
+  {"id": "syria_2024", "type": "government_falls", "country": "SYR", "date": "2024-12-08", "window": 2, "desc": "Syria: Assad falls"},
+  {"id": "bolivia_2019", "type": "government_falls", "country": "BOL", "date": "2019-11-10", "window": 2, "desc": "Bolivia: Morales resigns"},
+  {"id": "hormuz_redsea_2023", "type": "chokepoint_closed", "country": "YEM", "date": "2023-11-19", "window": 2, "desc": "Houthi Red Sea shipping attacks"}
+ ],
+ "non_events": {
+  "_note": "Things that did NOT happen; a good model keeps their probability low. Scored as false alarms.",
+  "interstate_wars_total": 4,
+  "pairs_at_peace": [["CHN", "TWN"], ["PRK", "KOR"], ["IND", "PAK"], ["USA", "CHN"], ["USA", "RUS"], ["USA", "IRN"], ["IRN", "SAU"], ["GRC", "TUR"]],
+  "stable_democracies": ["USA", "GBR", "DEU", "FRA", "JPN", "CAN", "AUS", "KOR", "ITA", "ESP", "NLD", "SWE", "CHE", "NZL"]
+ }
+}

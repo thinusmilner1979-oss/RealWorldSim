@@ -1,6 +1,6 @@
 """FastAPI server: runs the simulation in the background and streams state to the UI.
 
-    rws serve            # http://127.0.0.1:8765
+    rws serve            # http://127.0.0.1:8050
 
 REST endpoints under /api, a websocket at /ws that pushes a snapshot + new events
 every frame while the clock is running. Time control is in *simulated days per real
@@ -333,7 +333,7 @@ async def ws(websocket: WebSocket) -> None:
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
 
-def run(host: str = "127.0.0.1", port: int = 8765, seed: int = 42, start: str | None = None,
+def run(host: str = "127.0.0.1", port: int = 8050, seed: int = 42, start: str | None = None,
         cache_dir: str | None = None, open_browser: bool = False) -> None:
     import uvicorn
 

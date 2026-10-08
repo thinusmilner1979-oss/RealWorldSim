@@ -165,8 +165,15 @@ def step_geopolitics(world: World, p: GeoParams, gs: GeoState, rng: np.random.Ge
         drift -= p.war_weariness * c.intensity * (c.days / 365.0) * DT
         c.intensity = float(np.clip(c.intensity + drift + rng.normal(0, p.intensity_noise), 0.02, 1.0))
         c.peak = max(c.peak, c.intensity)
-        # escalation headline
-        if c.intensity > c.peak - 1e-9 and c.intensity > 0.6 and rng.random() < 0.05:
+        # crossing into major war is an event in its own right (Donbas 2014 -> invasion 2022)
+        if not c.major and c.intensity >= 0.6:
+            c.major = True
+            if c.days > 30:
+                events.append({"type": "war_escalation", "country": c.a, "country2": c.b, "severity": 0.9,
+                               "text": f"{c.name} escalates into full-scale war"})
+        elif c.major and c.intensity < 0.35:
+            c.major = False
+        elif c.intensity > c.peak - 1e-9 and c.intensity > 0.6 and rng.random() < 0.05:
             events.append({"type": "escalation", "country": c.a, "country2": c.b, "severity": 0.7,
                            "text": f"{c.name} escalates sharply"})
         # ceasefire hazard grows with duration and damage, falls with intensity momentum
@@ -224,9 +231,14 @@ def step_geopolitics(world: World, p: GeoParams, gs: GeoState, rng: np.random.Ge
 
     # ---- political crises -----------------------------------------------------
     high = np.maximum(s["unrest"] - 0.5, 0) / 0.5
-    # government falls (democracies): protests, no-confidence, snap election
-    gov = _hazard(p.gov_fall_hazard * high * (1 - s["regime"]) * (gs.last_gov_change > 120))
-    coup = _hazard(p.coup_hazard * high * s["regime"] * (1.2 - s["stability"]) * (gs.last_gov_change > 180))
+    fragility = (1 - s["stability"]) ** 2
+    # government falls (democracies): protests, no-confidence, snap election - plus a base rate
+    gov = _hazard((p.gov_fall_hazard * high + p.gov_fall_base_hazard * (0.3 + 2 * s["unrest"]) * (1 - s["stability"]))
+                  * (1 - s["regime"]) * (gs.last_gov_change > 120))
+    # coups: acute unrest in autocracies, plus a base rate in fragile autocracies / hybrids
+    coup = _hazard((p.coup_hazard * high * (1.2 - s["stability"])
+                    + p.coup_base_hazard * fragility * (0.5 + s["unrest"]))
+                   * np.clip(s["regime"], 0.1, 1) * (gs.last_gov_change > 180))
     civil = _hazard(p.civil_war_hazard * high ** 2 * (1 - s["stability"]) * (war == 0))
     r = rng.random((3, n))
     for i in np.where(r[0] < gov)[0]:

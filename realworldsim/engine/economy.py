@@ -141,6 +141,11 @@ def step_macro(world: World, p: MacroParams, st: MacroState, rng: np.random.Gene
     snowball = np.clip((s["policy_rate"] - s["inflation"] - s["growth"]) / 5.0, -0.5, 1.0)
     stressed = (s["debt_gdp"] > threshold * (1 - 0.15 * snowball)) & ~st.debt_crisis
     hazard = np.where(stressed, 0.5 * DT * (s["debt_gdp"] / threshold - 0.8), 0.0)
+    # base rate: fragile, indebted, high-inflation states default even below the threshold
+    fragile = (s["debt_gdp"] > 50) & (s["stability"] < 0.6) & ~st.debt_crisis
+    base = (p.default_base_hazard * DT * (s["debt_gdp"] / 100) * (1 - s["stability"])
+            * (1 + np.clip(s["inflation"], 0, 50) / 20))
+    hazard = np.where(fragile, hazard + base, hazard)
     new_crisis = rng.random(n) < hazard
     for i in np.where(new_crisis)[0]:
         st.debt_crisis[i] = True

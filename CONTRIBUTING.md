@@ -20,7 +20,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest -q             # ~90 s; the long-run test dominates
 ruff check .
-rws serve             # UI at http://127.0.0.1:8765
+rws serve             # UI at http://127.0.0.1:8050
 ```
 
 Quick feedback loop while tuning: `rws run --years 10 --seed 1 -v`.
@@ -29,7 +29,7 @@ Quick feedback loop while tuning: `rws run --years 10 --seed 1 -v`.
 
 See `ROADMAP.md`. In short:
 
-1. **Backtesting** — initialise the world at a past date from historical data and score the ensemble against what actually happened. This is the project's compass.
+1. **Backtesting** — `rws backtest` exists (docs/BACKTESTING.md); the work now is moving its score. Paste before/after numbers in every model PR.
 2. **Government agents** — per-country decision making with personalities.
 3. **Ensembles** — run many seeds, show distributions instead of one path.
 4. **Better data** — IMF WEO, EIA, SIPRI, BIS policy rates, trade matrices (UN Comtrade), OWID energy.

@@ -106,12 +106,12 @@ main { display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
 .feed { list-style: none; margin: 0; padding: 0 12px 12px; }
 .feed li { padding: 5px 0 5px 10px; border-left: 2px solid var(--line); margin: 3px 0; font-size: 12px; line-height: 1.35; }
 .feed li .t { font-family: var(--mono); color: var(--muted); font-size: 10px; margin-right: 6px; }
-.feed li.war_start, .feed li.civil_war, .feed li.coup, .feed li.chokepoint_closed, .feed li.pandemic, .feed li.financial_crisis { border-left-color: var(--crit); }
+.feed li.war_start, .feed li.war_escalation, .feed li.civil_war, .feed li.coup, .feed li.chokepoint_closed, .feed li.pandemic, .feed li.financial_crisis { border-left-color: var(--crit); }
 .feed li.ceasefire, .feed li.chokepoint_open, .feed li.debt_restructuring, .feed li.pandemic_end { border-left-color: var(--s3); }
 .feed li.market { border-left-color: var(--s4); }
 .feed li.government_falls, .feed li.debt_crisis, .feed li.escalation, .feed li.alliance { border-left-color: var(--s2); }
 .feed li.intervention { border-left-color: var(--s7); color: var(--text-2); font-family: var(--mono); font-size: 11px; }
-.feed li.disaster, .feed li.drought, .feed li.terror, .feed li.cyberattack { border-left-color: var(--s5); }
+.feed li.disaster, .feed li.drought, .feed li.harvest, .feed li.terror, .feed li.cyberattack { border-left-color: var(--s5); }
 
 /* country */
 .cname { font-size: 18px; font-weight: 700; padding: 12px 12px 0; }

@@ -155,7 +155,7 @@
   "CHN-TWN": 0.75, "CHN-IND": 0.5, "CHN-JPN": 0.5, "CHN-PHL": 0.55, "CHN-VNM": 0.4, "CHN-AUS": 0.35,
   "RUS-UKR": 1.0, "RUS-GBR": 0.65, "RUS-POL": 0.6, "RUS-EST": 0.55, "RUS-LVA": 0.55, "RUS-LTU": 0.55, "RUS-FIN": 0.5, "RUS-GEO": 0.55, "RUS-MDA": 0.5, "RUS-DEU": 0.55, "RUS-FRA": 0.5,
   "IND-PAK": 0.75, "ISR-IRN": 0.9, "ISR-PSE": 0.95, "ISR-LBN": 0.75, "ISR-SYR": 0.6, "ISR-YEM": 0.65,
-  "IRN-SAU": 0.5, "IRN-ARE": 0.4, "SAU-YEM": 0.6, "PRK-KOR": 0.62, "PRK-JPN": 0.6,
+  "IRN-SAU": 0.5, "IRN-ARE": 0.4, "SAU-YEM": 0.6, "PRK-KOR": 0.55, "PRK-JPN": 0.6,
   "ARM-AZE": 0.65, "SRB-XKX": 0.55, "GRC-TUR": 0.45, "TUR-SYR": 0.5, "MAR-DZA": 0.55, "ETH-ERI": 0.5, "ETH-EGY": 0.45, "SDN-SSD": 0.4, "RWA-COD": 0.7, "VEN-GUY": 0.5, "VEN-COL": 0.4, "THA-KHM": 0.45, "AFG-PAK": 0.55, "EGY-ETH": 0.45, "DZA-MLI": 0.4, "USA-MEX": 0.3, "USA-CAN": 0.2, "USA-DNK": 0.25
  },
  "active_conflicts": [
