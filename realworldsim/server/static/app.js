@@ -178,7 +178,7 @@
   }
   function renderChokes() {
     const C = $('#chokes'); C.innerHTML = '';
-    Object.entries(S.state.chokepoints).forEach(([k, v]) => { const s = el('span', v.closed ? 'closed' : '', (v.closed ? '⛔ ' : '⚓ ') + v.name); C.appendChild(s); });
+    Object.entries(S.state.chokepoints).forEach(([k, v]) => { const obs = v.observed > 0.1 ? ` −${Math.round(v.observed * 100)}%` : ''; const s = el('span', v.closed ? 'closed' : (v.observed > 0.5 ? 'warn' : ''), (v.closed ? '⛔ ' : '⚓ ') + v.name + obs); s.title = v.observed ? `shipping transits ${Math.round(v.observed * 100)}% below the 12-month norm (IMF PortWatch)` : ''; C.appendChild(s); });
     document.querySelectorAll('#iv-chokes button').forEach((b) => b.classList.toggle('closed', !!S.state.chokepoints[b.dataset.k]?.closed));
   }
   function showTip(ev, iso) {

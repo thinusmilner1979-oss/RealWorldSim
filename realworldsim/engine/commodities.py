@@ -38,14 +38,18 @@ class MarketState:
         loss = war_loss(world, p)
         sanction_loss = 0.15 * s["sanctioned_share"]
         supply0 = float((s["oil_prod"] * (1 - loss) * (1 - sanction_loss)).sum())
+        supply0 *= 1 - min(chokepoint_loss(world, "oil_share"), 0.9)  # today's observed shipping disruption
         self.demand_level = supply0 / max(float(s["oil_cons"].sum()), 1.0)  # oil demand multiplier
         self.demand_level0 = self.demand_level
         self.supply_level = 1.0   # slow-moving capacity: investment follows price, plus field growth
         gas_supply0 = float((s["gas_prod"] * (1 - loss) * (1 - 0.5 * sanction_loss)).sum())
+        gas_supply0 *= 1 - min(chokepoint_loss(world, "gas_share"), 0.9)
         self.gas_demand_level = gas_supply0 / max(float(s["gas_cons"].sum()), 1.0)
         self.eu_loss0 = _eu_gas_loss(world, loss, s)
         self.bread_loss0 = _bread_loss(world, loss)
         self.base_disruption_oil = float(loss @ s["oil_prod"] / max(s["oil_prod"].sum(), 1))
+        self.choke0 = chokepoint_loss(world, "oil_share")
+        self.gchoke0 = chokepoint_loss(world, "gas_share")
 
 
 def _eu_gas_loss(world: World, loss: np.ndarray, s: dict) -> float:
@@ -55,6 +59,18 @@ def _eu_gas_loss(world: World, loss: np.ndarray, s: dict) -> float:
 
 def _bread_loss(world: World, loss: np.ndarray) -> float:
     return float(sum(share * loss[world.index[c]] for c, share in BREADBASKETS.items() if c in world.index))
+
+
+def chokepoint_loss(world: World, share_key: str) -> float:
+    """Share of world seaborne supply lost to chokepoints: fully closed ones, or the disruption
+    observed in shipping data (PortWatch) for open ones."""
+    total = 0.0
+    for cp in world.chokepoints.values():
+        if cp["closed"]:
+            total += cp[share_key]
+        else:
+            total += cp[share_key] * float(cp.get("observed_disruption", 0.0))
+    return total
 
 
 def war_loss(world: World, p: CommodityParams) -> np.ndarray:
@@ -83,7 +99,7 @@ def step_commodities(world: World, p: CommodityParams, ms: MarketState, rng: np.
 
     # ---- oil ---------------------------------------------------------------
     supply = float((s["oil_prod"] * (1 - loss) * (1 - sanction_loss)).sum())
-    choke = sum(c["oil_share"] for c in world.chokepoints.values() if c["closed"])
+    choke = chokepoint_loss(world, "oil_share")
     supply *= (1 - min(choke, 0.9)) * (1 - world.oil_supply_shock)
     # capacity grows ~0.8%/yr plus investment response to a sustained price gap
     ms.supply_level *= 1 + (0.008 + 0.04 * np.log(world.prices["oil"] / world.price_start["oil"])) * DT
@@ -96,7 +112,7 @@ def step_commodities(world: World, p: CommodityParams, ms: MarketState, rng: np.
     supply *= price_ratio ** 0.10
     imbalance = (demand - supply) / max(supply, 1.0)
     ms.disruption["oil"] = float(np.clip(loss @ s["oil_prod"] / max(s["oil_prod"].sum(), 1)
-                                         - ms.base_disruption_oil + choke + world.oil_supply_shock, 0, 1))
+                                         - ms.base_disruption_oil + choke - ms.choke0 + world.oil_supply_shock, 0, 1))
     d = (p.oil_elasticity * imbalance * DT * 30     # ~monthly clearing speed
          - p.oil_reversion * np.log(price_ratio) * DT
          + rng.normal(0, p.oil_noise))
@@ -107,7 +123,7 @@ def step_commodities(world: World, p: CommodityParams, ms: MarketState, rng: np.
 
     # ---- gas -----------------------------------------------------------------
     gas_supply = float((s["gas_prod"] * (1 - loss) * (1 - 0.5 * sanction_loss)).sum())
-    gchoke = sum(c["gas_share"] for c in world.chokepoints.values() if c["closed"])
+    gchoke = chokepoint_loss(world, "gas_share")
     gas_supply *= 1 - min(gchoke, 0.9)
     gas_ratio = world.prices["gas"] / world.price_anchor["gas"]
     gas_demand = (float(s["gas_cons"].sum()) * ms.gas_demand_level
@@ -124,7 +140,7 @@ def step_commodities(world: World, p: CommodityParams, ms: MarketState, rng: np.
 
     # European gas: hub price plus premium driven by disruption of Europe's suppliers
     eu_loss = _eu_gas_loss(world, loss, s) - ms.eu_loss0
-    ms.disruption["gas_eu"] = float(np.clip(eu_loss + gchoke, -1, 1))
+    ms.disruption["gas_eu"] = float(np.clip(eu_loss + gchoke - ms.gchoke0, -1, 1))
     eu_ratio0 = world.price_start["gas_eu"] / world.price_start["gas"]
     eu_target = world.prices["gas"] * eu_ratio0 * (1 + 4.0 * ms.disruption["gas_eu"])
     world.prices["gas_eu"] += (eu_target - world.prices["gas_eu"]) * (1 - np.exp(-DT * 12))

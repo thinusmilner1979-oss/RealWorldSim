@@ -234,7 +234,9 @@ class Simulation:
                 "enso_state": w.enso_state,
             },
             "conflicts": [c.to_dict() for c in w.active_conflicts()],
-            "chokepoints": {k: {"name": v["name"], "closed": v["closed"]} for k, v in w.chokepoints.items()},
+            "chokepoints": {k: {"name": v["name"], "closed": v["closed"],
+                                "observed": round(float(v.get("observed_disruption", 0.0)), 2)}
+                            for k, v in w.chokepoints.items()},
             "hotspots": self.hotspots(12),
             "live_data_date": w.live_data_date,
         }

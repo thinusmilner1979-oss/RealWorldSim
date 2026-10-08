@@ -17,7 +17,10 @@ GOLDPRICE = "https://data-asg.goldprice.org/dbXRates/USD"  # keyless JSON, somet
 PINK_SHEET = ("https://thedocs.worldbank.org/en/doc/5d903e848db1d1b83e0ec8f744e55570-0350012021/related/"
               "CMO-Historical-Data-Monthly.xlsx")
 URL_HIST = "https://stooq.com/q/d/l/?s={sym}&i=d"  # alternative endpoint: full daily history CSV
-YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d"
+YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d&crumb={crumb}"
+YAHOO_COOKIE = "https://fc.yahoo.com"
+YAHOO_CRUMB = "https://query1.finance.yahoo.com/v1/test/getcrumb"
+GOLD_API = "https://api.gold-api.com/price/XAU"  # keyless JSON spot gold
 YAHOO_SYMBOLS = {"gold": ("GC=F", 1.0), "oil": ("BZ=F", 1.0), "copper": ("HG=F", 1.0),
                  "wheat": ("ZW=F", 1 / 100.0), "gas": ("NG=F", 1.0)}
 # Pink Sheet column header (as in the sheet) -> (our key, scale)
@@ -52,6 +55,26 @@ def parse(csv_text: str) -> float | None:
         except (ValueError, IndexError):
             continue
     return None
+
+
+def yahoo_session():
+    """Yahoo wants a cookie and a 'crumb' before it serves chart data (no account, no key)."""
+    import http.cookiejar
+    import urllib.request
+
+    from .http import BROWSER_UA
+
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    opener.addheaders = [("User-Agent", BROWSER_UA), ("Accept", "*/*")]
+    try:
+        opener.open(YAHOO_COOKIE, timeout=20).read()
+    except Exception:  # noqa: BLE001 - fc.yahoo.com answers 404 but sets the cookie
+        pass
+    crumb = opener.open(YAHOO_CRUMB, timeout=20).read().decode("utf-8", errors="replace").strip()
+    if not crumb or "<" in crumb:
+        raise RuntimeError("no crumb")
+    return opener, crumb
 
 
 def parse_yahoo(payload: dict) -> float | None:
@@ -99,18 +122,41 @@ def parse_pink_sheet(xlsx_bytes: bytes) -> dict[str, float]:
 
 
 def fetch(cache: Path, verbose: bool = False) -> dict:
+    import json
+    import time
+
     prices = {}
-    for key, (sym, scale) in YAHOO_SYMBOLS.items():
+    try:
+        opener, crumb = yahoo_session()
+    except Exception as e:  # noqa: BLE001
+        opener, crumb = None, None
+        if verbose:
+            print(f"  yahoo session: {e}")
+    if opener:
+        for key, (sym, scale) in YAHOO_SYMBOLS.items():
+            try:
+                raw = opener.open(YAHOO.format(sym=sym, crumb=crumb), timeout=30).read()
+                v = parse_yahoo(json.loads(raw.decode("utf-8")))
+            except Exception as e:  # noqa: BLE001
+                if verbose:
+                    print(f"  yahoo {sym}: {e}")
+                time.sleep(1.0)
+                continue
+            if v:
+                prices[key] = round(v * scale, 3)
+                if verbose:
+                    print(f"  {key:<7} {prices[key]} (yahoo {sym})")
+            time.sleep(0.4)
+    if "gold" not in prices:
         try:
-            v = parse_yahoo(get_json(YAHOO.format(sym=sym), timeout=30, browser=True))
+            d = get_json(GOLD_API, timeout=20, browser=True)
+            v = float(d.get("price"))
+            prices["gold"] = round(v, 2)
+            if verbose:
+                print(f"  gold    {v} (gold-api.com)")
         except Exception as e:  # noqa: BLE001
             if verbose:
-                print(f"  yahoo {sym}: {e}")
-            continue
-        if v:
-            prices[key] = round(v * scale, 3)
-            if verbose:
-                print(f"  {key:<7} {prices[key]} (yahoo {sym})")
+                print(f"  gold-api.com: {e}")
     for key, (sym, scale) in SERIES.items():
         if key in prices:
             continue

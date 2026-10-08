@@ -74,6 +74,7 @@ main { display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
 .chokes { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 4px; flex-wrap: wrap; z-index: 2; justify-content: flex-end; max-width: 50%; }
 .chokes span { font-size: 10px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); background: rgba(26,26,25,.9); color: var(--muted); }
 .chokes span.closed { border-color: var(--crit); color: #ffb3b3; background: #3a1716; }
+.chokes span.warn { border-color: var(--warn); color: #ffe0a3; }
 
 /* map marks */
 .country { stroke: #0d0d0c; stroke-width: .4; cursor: pointer; transition: fill .3s; }
