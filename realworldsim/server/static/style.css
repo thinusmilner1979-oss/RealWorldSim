@@ -134,7 +134,8 @@ main { display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
 .row.wrap { flex-wrap: wrap; }
 .row label { color: var(--muted); font-size: 11px; min-width: 110px; }
 .row output { font-family: var(--mono); color: var(--text); margin-left: 4px; }
-.row input[type=range] { flex: 1; padding: 0; background: transparent; border: 0; }
+.row input[type=range] { flex: 1; padding: 0; background: transparent; border: 0; min-width: 0; }
+.row input[type=number] { flex: 1; min-width: 0; width: 60px; }
 .row select.cc { flex: 1; min-width: 0; }
 .vs { color: var(--muted); }
 .chk { font-size: 11px; padding: 3px 8px; }
