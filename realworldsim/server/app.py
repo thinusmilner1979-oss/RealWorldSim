@@ -262,6 +262,8 @@ async def control(c: Control) -> dict[str, Any]:
         clock.running = clock.run_until > clock.sim.day
     else:
         raise HTTPException(400, f"unknown action {c.action}")
+    if c.action in ("play", "pause", "speed", "run_to"):
+        await clock.broadcast()  # push the new running/speed state to every open page immediately
     return {"running": clock.running, "speed": clock.speed, "day": clock.sim.day, "date": clock.sim.today.isoformat()}
 
 

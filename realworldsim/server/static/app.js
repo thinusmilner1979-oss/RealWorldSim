@@ -54,7 +54,9 @@
     if (!r.ok) { const t = await r.text(); throw new Error(t); }
     return r.json();
   };
-  const control = (action, extra = {}) => api('/api/control', { action, ...extra }).catch((e) => toast(e.message));
+  const control = (action, extra = {}) => api('/api/control', { action, ...extra })
+    .then((r) => { if (r && 'running' in r) { S.running = r.running; S.speed = r.speed; if (S.state) renderClock(); } return r; })
+    .catch((e) => toast(e.message));
   const intervene = (body) => api('/api/intervene', body).then(() => refreshHistory()).catch((e) => toast(e.message));
   let toastT; const toast = (msg) => { const t = $('#tooltip'); t.hidden = false; t.style.left = '50%'; t.style.top = '20px'; t.innerHTML = `<b>${msg}</b>`; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2500); };
 

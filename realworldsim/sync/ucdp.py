@@ -1,13 +1,16 @@
-"""UCDP Georeferenced Event Dataset API (free): https://ucdp.uu.se/apidocs/
+"""UCDP battle deaths -> conflict intensity.
 
-Battle-related deaths per country over the last 12 months -> conflict intensity.
+UCDP's own API (https://ucdp.uu.se/apidocs/) now answers 401 without a login, so it is tried
+only opportunistically. The working, keyless path is Our World in Data's republication of
+UCDP's yearly deaths by country (CC BY), one year behind but authoritative. GDELT supplies
+the fast-moving signal.
 """
 from __future__ import annotations
 
 from datetime import date, timedelta
 from pathlib import Path
 
-from .http import get_json
+from .http import get_json, get_text
 
 # The dataset version string changes with each release; try newest first.
 VERSIONS = ["25.1", "24.1", "23.1"]
@@ -49,6 +52,30 @@ def aggregate(events: list[dict], name_map: dict[str, str] | None = None) -> dic
             for iso, d in deaths.items()}
 
 
+OWID_SLUGS = ["deaths-in-armed-conflicts-by-country", "deaths-in-armed-conflicts-based-on-where-they-occurred",
+              "number-of-deaths-in-armed-conflicts", "deaths-in-state-based-conflicts-by-country"]
+
+
+def fetch_owid(verbose: bool = False) -> dict:
+    from . import owid
+
+    for slug in OWID_SLUGS:
+        try:
+            got = owid.parse(get_text(owid.URL.format(slug=slug), timeout=120), float)
+        except Exception as e:  # noqa: BLE001
+            if verbose:
+                print(f"  owid {slug}: {e}")
+            continue
+        if got:
+            countries = {iso: {"battle_deaths_12m": v, "battle_deaths_year": year,
+                               "war_intensity_live": intensity_from_deaths(v)} for iso, (v, year) in got.items()}
+            if verbose:
+                top = sorted(countries.items(), key=lambda kv: -kv[1]["battle_deaths_12m"])[:8]
+                print(f"  via OWID ({slug}):", ", ".join(f"{k} {int(v['battle_deaths_12m'])}" for k, v in top))
+            return {"countries": countries}
+    return {}
+
+
 def fetch(cache: Path, verbose: bool = False) -> dict:
     start = (date.today() - timedelta(days=365)).isoformat()
     events: list[dict] = []
@@ -66,8 +93,10 @@ def fetch(cache: Path, verbose: bool = False) -> dict:
             if verbose:
                 print(f"  ucdp {ver}: {e}")
             events = []
+            if "401" in str(e) or "403" in str(e):
+                break  # login required - do not hammer the other versions
     if not events:
-        return {}
+        return fetch_owid(verbose)
     countries = aggregate(events)
     if verbose:
         top = sorted(countries.items(), key=lambda kv: -kv[1]["battle_deaths_12m"])[:8]
