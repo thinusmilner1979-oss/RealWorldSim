@@ -20,6 +20,18 @@ Phases, roughly in order. Each bullet is meant to become a GitHub issue; claim o
 - [ ] Military spending from SIPRI; nuclear status from a maintained list
 - [ ] Replace the hand-curated `overrides.json` with sourced, dated values wherever a free source exists
 
+## Next up (agreed 2026-10-08)
+- [ ] **War motives, fitted from history.** Replace "tension + expected win" with generic motive terms for every
+      country, each with a coefficient in `params.py`: diversionary (recession, unrest, falling legitimacy →
+      external fight), resource security (energy/food import dependence under supply shock or chokepoint
+      pressure; exporters defending markets), economic stakes (trade dampens; relative decline → "window"),
+      systemic/currency interest (reserve-currency issuers when financial dominance erodes), opportunity
+      (rival distracted or weakened). Fit the weights against UCDP / Correlates of War initiators + World Bank
+      economic state at onset, keyless bulk data. Report what the data says — including terms that come out ~0.
+- [ ] **War endings, fitted from history.** Survival model for ceasefire/decisive-end hazard on UCDP conflict
+      durations: duration, intensity, war type, balance of forces.
+- [ ] Sync runs in a separate process so the simulation never slows during a sync.
+
 ## 0.3 — governments that decide things
 - [ ] Per-country **agent** with a personality vector (hawkishness, fiscal discipline, openness, repression) derived from V-Dem / Polity / Economist indices
 - [ ] Monthly action set: rates, fiscal stance, arm, ally, sanction, escalate, de-escalate, negotiate, mobilise
