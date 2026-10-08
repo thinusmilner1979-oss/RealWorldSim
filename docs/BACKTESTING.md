@@ -57,6 +57,20 @@ slower ceasefires; wider oil noise; escalation events):
 | P(Covid-scale pandemic) | 0.12 | 0.25–0.5 |
 | P(Mali coup) | 0 | 0.5 |
 
+Second pass (same day): Israel added to the country set (it had been dropped by a Natural Earth
+"disputed" flag, which is why Gaza scored zero), military balance, decisive war outcomes, intensity
+reversion with discrete escalation, per-country drought and ENSO:
+
+| | after pass 1 (8 runs) | after pass 2 (12 runs) |
+|---|---|---|
+| composite | 0.53 | **0.55** |
+| event Brier | 0.815 | 0.769 |
+| wars per run (actual 4) | 1.5 | 2.9 |
+| war on peaceful pair | 0.06 | 0.01 |
+| P(2022 invasion, ±2y / ever) | 0.62 / 0.88 | 0.42 / 0.83 |
+| P(Israel–Gaza war) | 0 / 0 | 0.25 / 0.75 |
+| P(Covid-scale pandemic) | 0.25–0.5 | 0.58 |
+
 What the harness says is still wrong, in order of size:
 
 1. **No 2022 inflation spike, no 2020 crash.** World inflation sits at ~2.5% whatever happens;

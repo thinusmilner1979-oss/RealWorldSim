@@ -8,7 +8,7 @@ Thanks for looking. RealWorldSim is early, ambitious and deliberately open-ended
 * **Keep it stable.** `tests/test_engine.py::test_long_run_stays_sane` runs 20 years on two seeds and asserts the world doesn't explode. If your change makes it fail, tune, don't delete the test.
 * **Constants go in `engine/params.py`**, not inline. Every number should be nameable, documented and tunable.
 * **Calibrate changes, don't just add them.** The world at t=0 should look like today's world; new mechanisms must not "discover" existing conditions and react to them (see *Calibration at t=0* in `docs/ARCHITECTURE.md`).
-* **Free data only.** No source that costs money or requires a paid key. Free registration is acceptable only if the data is redistributable.
+* **Free data only, no keys at all.** Every request goes from the user's own machine, so nothing is shared or rate-limited across users. If a source needs an API key, find a keyless alternative or a bulk download.
 * Keep PRs focused. One mechanism, one data source, one UI feature.
 
 ## Getting set up

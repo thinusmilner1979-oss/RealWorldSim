@@ -54,7 +54,7 @@
   <div class="kpi"><div class="k">Wheat</div><div class="v" id="k-wheat">—</div><div class="d" id="d-wheat"></div></div>
   <div class="kpi"><div class="k">Gold</div><div class="v" id="k-gold">—</div><div class="d" id="d-gold"></div></div>
   <div class="kpi"><div class="k">Active wars</div><div class="v" id="k-wars">—</div></div>
-  <div class="kpi"><div class="k">Refugees</div><div class="v" id="k-ref">—</div></div>
+  <div class="kpi"><div class="k">Refugees</div><div class="v" id="k-ref">—</div><div class="d" id="d-enso"></div></div>
   <div class="kpi risk"><div class="k">Global risk</div><div class="v" id="k-risk">—</div><div class="bar"><i id="k-riskbar"></i></div></div>
 </section>
 
@@ -72,6 +72,7 @@
       <button data-tab="feed" class="active">Feed</button>
       <button data-tab="country">Country</button>
       <button data-tab="intervene">Intervene</button>
+      <button data-tab="data">Data</button>
       <button data-tab="about">?</button>
     </nav>
 
@@ -128,6 +129,26 @@
       <div class="panel">
         <div class="h">Active conflicts</div>
         <ul id="iv-conflicts" class="conflicts"></ul>
+      </div>
+    </div>
+
+    <div id="tab-data" class="tab">
+      <div class="panel">
+        <div class="h">Live data</div>
+        <div id="data-status" class="muted">…</div>
+        <div class="row" style="margin-top:8px">
+          <button id="btn-sync" class="primary">Sync now</button>
+          <button id="btn-apply">Restart world with live data</button>
+        </div>
+        <div class="muted small">All sources are free and need no account or API key; every request goes from this computer. A full sync takes 1–3 minutes (the climate source makes one call per country).</div>
+      </div>
+      <div class="panel">
+        <div class="h">Sources</div>
+        <ul id="sources" class="sources"></ul>
+      </div>
+      <div class="panel">
+        <div class="h">Climate</div>
+        <div id="climate-status" class="muted">—</div>
       </div>
     </div>
 

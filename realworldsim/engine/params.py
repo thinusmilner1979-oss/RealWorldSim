@@ -101,8 +101,12 @@ class GeoParams:
     nuclear_deterrence: float = 0.25  # multiply hazard if both nuclear
     democracy_peace: float = 0.4  # multiply hazard if both democracies
     # War dynamics
-    escalation_drift: float = 0.0
-    intensity_noise: float = 0.02
+    # intensity reverts to a tension-dependent level; full-scale escalation is a discrete decision
+    intensity_reversion: float = 1.0   # per year
+    intensity_noise: float = 0.006     # daily
+    escalation_hazard: float = 0.25    # annual, at tension = escalation_threshold
+    escalation_threshold: float = 0.9
+    escalation_width: float = 0.04
     ceasefire_base_hazard: float = 0.18  # annual, grows with duration and damage
     war_weariness: float = 0.3
     # Civil unrest
@@ -124,6 +128,11 @@ class GeoParams:
     # Sanction effects
     sanction_growth: float = 3.0  # growth drag at 100% of trade sanctioned
     sanction_inflation: float = 4.0
+    # Military balance: war hazard multiplier at full dominance, decisive-outcome hazard (annual at full imbalance)
+    dominance_hazard: float = 0.8
+    decisive_hazard: float = 0.5
+    # Unrest push per unit drought index (agriculture-dependent populations)
+    drought_unrest: float = 0.03
     # Refugee outflow per unit intensity per year (share of population)
     refugee_rate: float = 0.03
     # Spillover of neighbour's war intensity into tension/unrest
@@ -141,6 +150,11 @@ class EventParams:
     bumper_harvest_hazard: float = 0.6
     cyberattack_hazard: float = 0.5
     terror_hazard: float = 1.0
+    # Climate: drought index decays toward 0 (per year); ENSO pushes regional drought; warming
+    # raises disaster/drought hazards by this fraction per simulated year
+    drought_decay: float = 1.5
+    enso_strength: float = 0.25
+    climate_trend: float = 0.02
 
 
 @dataclass

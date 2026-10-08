@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
 import time
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,7 @@ from pydantic import BaseModel
 from ..engine.params import Params
 from ..engine.simulation import Simulation
 from ..engine.world import DATA_DIR
+from ..sync import DESCRIPTIONS, SOURCES, cache_status, sync_all
 
 STATIC = Path(__file__).resolve().parent / "static"
 SAVE_DIR = Path.cwd() / "saves"
@@ -43,8 +45,10 @@ class Clock:
         self.clients: set[WebSocket] = set()
         self._carry = 0.0
 
-    def reset(self, seed: int = 42, start: date | None = None, params: Params | None = None) -> None:
-        self.sim = Simulation(seed=seed, start=start or date.today(), params=params, cache_dir=self.cache_dir)
+    def reset(self, seed: int = 42, start: date | None = None, params: Params | None = None,
+              use_live: bool = True) -> None:
+        self.sim = Simulation(seed=seed, start=start or date.today(), params=params, cache_dir=self.cache_dir,
+                              use_live=use_live)
         self.pending_events: list[dict] = []
         self.running = False
         self.run_until = None
@@ -96,6 +100,50 @@ class Clock:
 
 
 clock = Clock()
+
+
+class SyncJob:
+    """One background sync at a time; progress is polled by the UI."""
+
+    def __init__(self) -> None:
+        self.running = False
+        self.log: list[dict] = []
+        self.started: str | None = None
+        self.finished: str | None = None
+        self.error: str | None = None
+
+    def start(self, sources: list[str] | None) -> bool:
+        if self.running:
+            return False
+        self.running, self.log, self.error = True, [], None
+        self.started, self.finished = datetime.now().isoformat(timespec="seconds"), None
+
+        def progress(source: str, status: str, detail: str) -> None:
+            for row in self.log:
+                if row["source"] == source:
+                    row.update(status=status, detail=detail)
+                    break
+            else:
+                self.log.append({"source": source, "status": status, "detail": detail})
+
+        def work() -> None:
+            try:
+                sync_all(clock.cache_dir or Path.cwd() / ".rws_cache", sources=sources, progress=progress)
+            except Exception as e:  # noqa: BLE001
+                self.error = str(e)
+            finally:
+                self.running = False
+                self.finished = datetime.now().isoformat(timespec="seconds")
+
+        threading.Thread(target=work, daemon=True).start()
+        return True
+
+    def status(self) -> dict[str, Any]:
+        return {"running": self.running, "log": self.log, "started": self.started, "finished": self.finished,
+                "error": self.error}
+
+
+sync_job = SyncJob()
 
 
 @asynccontextmanager
@@ -270,6 +318,46 @@ async def intervene(iv: Intervention) -> dict[str, Any]:
     return {"ok": True, "interventions": len(sim.interventions)}
 
 
+# ------------------------------------------------------------------ data sync
+class SyncReq(BaseModel):
+    sources: list[str] | None = None
+
+
+@app.get("/api/data")
+async def data_status() -> dict[str, Any]:
+    return {
+        "cache": cache_status(clock.cache_dir or Path.cwd() / ".rws_cache"),
+        "sources": [{"name": k, "description": DESCRIPTIONS[k]} for k in SOURCES],
+        "sync": sync_job.status(),
+        "world_live_date": clock.sim.world.live_data_date,
+    }
+
+
+@app.post("/api/sync")
+async def start_sync(req: SyncReq) -> dict[str, Any]:
+    bad = [s for s in (req.sources or []) if s not in SOURCES]
+    if bad:
+        raise HTTPException(400, f"unknown sources: {bad}")
+    if not sync_job.start(req.sources):
+        raise HTTPException(409, "a sync is already running")
+    return sync_job.status()
+
+
+class ApplyReq(BaseModel):
+    seed: int | None = None
+
+
+@app.post("/api/apply_live")
+async def apply_live(req: ApplyReq) -> dict[str, Any]:
+    """Restart the world from the live cache (keeps the current seed unless given)."""
+    if sync_job.running:
+        raise HTTPException(409, "sync still running")
+    async with clock.lock:
+        clock.reset(seed=req.seed if req.seed is not None else clock.sim.seed, use_live=True)
+    await clock.broadcast()
+    return {"ok": True, "live_data_date": clock.sim.world.live_data_date}
+
+
 class SaveReq(BaseModel):
     name: str = "world"
 
@@ -334,10 +422,15 @@ app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
 
 def run(host: str = "127.0.0.1", port: int = 8050, seed: int = 42, start: str | None = None,
-        cache_dir: str | None = None, open_browser: bool = False) -> None:
+        cache_dir: str | None = None, open_browser: bool = False, auto_sync_days: float | None = None) -> None:
     import uvicorn
 
     clock.cache_dir = Path(cache_dir) if cache_dir else None
+    if auto_sync_days is not None:
+        st = cache_status(clock.cache_dir or Path.cwd() / ".rws_cache")
+        if not st.get("exists") or st.get("age_days", 1e9) > auto_sync_days:
+            print(f"live data cache missing or older than {auto_sync_days} days - syncing in the background")
+            sync_job.start(None)
     clock.reset(seed=seed, start=date.fromisoformat(start) if start else None)
     if open_browser:
         import threading

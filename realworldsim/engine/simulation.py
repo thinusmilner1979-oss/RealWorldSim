@@ -29,7 +29,7 @@ from .params import Params
 from .world import Conflict, World
 
 HISTORY_FIELDS = ["gdp", "growth", "inflation", "unemployment", "policy_rate", "debt_gdp",
-                  "fx", "stability", "unrest", "war_intensity", "mil_spend_gdp", "risk"]
+                  "fx", "stability", "unrest", "war_intensity", "mil_spend_gdp", "risk", "drought", "mil_power"]
 PRICE_KEYS = ["oil", "gas", "gas_eu", "wheat", "copper", "gold", "fertilizer"]
 
 
@@ -210,7 +210,8 @@ class Simulation:
     def snapshot(self, fields: list[str] | None = None) -> dict[str, Any]:
         w = self.world
         fields = fields or ["gdp", "growth", "inflation", "unemployment", "policy_rate", "debt_gdp",
-                            "stability", "unrest", "war_intensity", "fx", "risk", "mil_spend_gdp", "sanctioned_share"]
+                            "stability", "unrest", "war_intensity", "fx", "risk", "mil_spend_gdp", "sanctioned_share",
+                            "drought", "mil_power"]
         wgt = w.gdp_weights()
         return {
             "day": self.day,
@@ -229,6 +230,8 @@ class Simulation:
                 "active_wars": len(w.active_conflicts()),
                 "refugees": round(float(w.s["refugees_out"].sum())),
                 "oil_disruption": round(self.market.disruption["oil"], 3),
+                "enso": round(w.enso, 2),
+                "enso_state": w.enso_state,
             },
             "conflicts": [c.to_dict() for c in w.active_conflicts()],
             "chokepoints": {k: {"name": v["name"], "closed": v["closed"]} for k, v in w.chokepoints.items()},

@@ -79,6 +79,7 @@ def step_macro(world: World, p: MacroParams, st: MacroState, rng: np.random.Gene
         - war_drag(world, p)
         - sanction_drag
         - crisis_drag
+        - 1.0 * np.maximum(s["drought"], 0) * agri_share(world)
     )
     # growth adjusts toward target with a ~3-month half-life, plus noise
     noise = rng.normal(0, p.growth_noise, n) * np.sqrt(DT) * 3
@@ -202,6 +203,12 @@ def step_macro(world: World, p: MacroParams, st: MacroState, rng: np.random.Gene
     s["stability"] = np.clip(s["stability"], 0.02, 0.98)
 
 
+def agri_share(world: World) -> np.ndarray:
+    """Rough agriculture share of GDP by income group (drought hits poor economies hardest)."""
+    return np.array([0.02 if g == "high_oecd" else 0.04 if g == "high" else 0.08 if g == "upper_middle"
+                     else 0.18 if g == "lower_middle" else 0.28 for g in world.income_group]) * 1.5
+
+
 def war_drag(world: World, p: MacroParams) -> np.ndarray:
     """Growth drag from active conflicts, by role."""
     drag = np.zeros(world.n)
@@ -210,8 +217,10 @@ def war_drag(world: World, p: MacroParams) -> np.ndarray:
         if c.type == "civil":
             drag[ia] += p.civil_war_drag * c.intensity
         else:
-            drag[ia] += p.war_drag_attacker * c.intensity
-            drag[ib] += p.war_drag_defender * c.intensity
+            pa, pb = max(world.s["mil_power"][ia], 1e-3), max(world.s["mil_power"][ib], 1e-3)
+            share_b = pb / (pa + pb)  # a strong opponent does more damage
+            drag[ia] += p.war_drag_attacker * c.intensity * (0.5 + share_b)
+            drag[ib] += p.war_drag_defender * c.intensity * (0.5 + (1 - share_b))
         for code in c.spillover:
             if code in world.index:
                 drag[world.index[code]] += 1.5 * c.intensity

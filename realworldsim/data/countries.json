@@ -1397,6 +1397,23 @@
    "lat": 64.779
   },
   {
+   "iso3": "ISR",
+   "name": "Israel",
+   "name_long": "Israel",
+   "continent": "Asia",
+   "region": "Asia",
+   "subregion": "Western Asia",
+   "region_wb": "Middle East & North Africa",
+   "income_group": "high_oecd",
+   "economy_class": "2. Developed region: nonG7",
+   "population": 9053300,
+   "gdp_usd_bn": 394.652,
+   "gdp_year": 2019,
+   "fips": null,
+   "lon": 34.848,
+   "lat": 30.911
+  },
+  {
    "iso3": "ITA",
    "name": "Italy",
    "name_long": "Italy",

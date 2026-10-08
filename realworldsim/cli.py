@@ -11,7 +11,8 @@ def cmd_serve(a: argparse.Namespace) -> None:
     from .server.app import run
 
     print(f"RealWorldSim  http://{a.host}:{a.port}   (seed {a.seed})")
-    run(host=a.host, port=a.port, seed=a.seed, start=a.start, cache_dir=a.cache, open_browser=not a.no_browser)
+    run(host=a.host, port=a.port, seed=a.seed, start=a.start, cache_dir=a.cache, open_browser=not a.no_browser,
+        auto_sync_days=a.auto_sync)
 
 
 def cmd_run(a: argparse.Namespace) -> None:
@@ -78,6 +79,8 @@ def main(argv: list[str] | None = None) -> None:
     s.add_argument("--start", help="simulation start date (ISO), default today")
     s.add_argument("--cache", default=".rws_cache", help="directory holding live-sync data")
     s.add_argument("--no-browser", action="store_true")
+    s.add_argument("--auto-sync", type=float, default=None, metavar="DAYS",
+                   help="sync live data on launch if the cache is missing or older than DAYS")
     s.set_defaults(fn=cmd_serve)
 
     r = sub.add_parser("run", help="headless run, yearly summary to stdout")
@@ -92,7 +95,7 @@ def main(argv: list[str] | None = None) -> None:
     y = sub.add_parser("sync", help="pull live data from free public sources into the cache")
     y.add_argument("--cache", default=".rws_cache")
     y.add_argument("--sources", nargs="*", default=None,
-                   help="subset of: worldbank ucdp gdelt fred (default: all)")
+                   help="subset of: worldbank owid ucdp gdelt climate unhcr portwatch stooq fred (default: all)")
     y.add_argument("--history", nargs="*", type=int, metavar="YEAR",
                    help="instead of today's data, fetch World Bank values for these years (for backtests)")
     y.set_defaults(fn=cmd_sync)

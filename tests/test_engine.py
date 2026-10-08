@@ -11,7 +11,7 @@ from realworldsim.engine.world import World
 def test_world_has_every_country():
     w = World()
     assert w.n >= 190
-    for code in ("USA", "CHN", "ZAF", "UKR", "TWN", "XKX", "PSE"):
+    for code in ("USA", "CHN", "ZAF", "UKR", "TWN", "XKX", "PSE", "ISR"):
         assert code in w.index
     assert abs(w.tension - w.tension.T).max() < 1e-9
     assert w.s["gdp"].min() > 0 and w.s["population"].min() > 0

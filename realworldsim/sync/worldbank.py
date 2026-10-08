@@ -16,6 +16,7 @@ INDICATORS = {
     "GC.DOD.TOTL.GD.ZS": ("debt_gdp", float),
     "MS.MIL.XPND.GD.ZS": ("mil_spend_gdp", float),
     "FR.INR.LEND": ("lending_rate", float),
+    "MS.MIL.TOTL.P1": ("mil_personnel", float),
 }
 
 # World Bank aggregates (regions, income groups) share the same endpoint; skip them.

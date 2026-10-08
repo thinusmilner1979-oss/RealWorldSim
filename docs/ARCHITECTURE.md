@@ -89,6 +89,30 @@ Intensity random-walks with drift from tension and decays with war-weariness; ce
 
 Unrest: decays to a structural floor (fragile states and restless democracies stay restless), rises with inflation and unemployment *surprises*, food price rises × import share, economic contraction and war; autocracies suppress visible unrest. Above 0.5: governments fall (democracies, 0.4/yr at max), coups (autocracies, 0.25/yr), civil wars (0.08/yr).
 
+## Military balance and war outcomes
+
+`mil_power` (USA = 1) = 0.5·log(budget) + 0.2·log(personnel) + 0.2·technology (GDP per head) + 0.1·nuclear,
+recomputed monthly. Three uses: the war hazard is scaled by dominance (peers deter each other, a mismatch
+invites attack: ×(0.6 … 1.4)); war damage is scaled by the opponent's share of combined power; and a major
+interstate war can end *decisively* with hazard 0.5·mismatch²·intensity² per year (after a 6-month ramp),
+the stronger side winning with probability = its power share. The loser: stability −0.2, unrest +0.25,
+growth gap −4·intensity; tension between the pair resets to 0.5.
+
+Conflict intensity no longer random-walks. It reverts (1/yr) to a tension-dependent level
+(`clip((T − 0.5)·1.4, 0.05, 1)`), so a frozen conflict at T = 0.85 sits near 0.5 and a war at T = 0.95 near
+0.65; escalation to full-scale war (intensity jumps to ~0.8) is a discrete hazard of 0.25/yr at T = 0.9
+(logistic width 0.04), which is how Donbas-2014 can become 2022.
+
+## Climate (events.py)
+
+Each country carries a `drought` index in [−1, 1] (positive = drier than normal), seeded from Open-Meteo's
+ERA5 history when synced (last 90 days' rain vs. the same window in the previous 6 years). It decays at
+1.5/yr, is pushed by ENSO through sub-regional teleconnection signs (El Niño dries southern Africa,
+Australia, SE Asia; wets the US south and Peru), and jumps with regional dry/wet spells whose hazard
+rises with a warming trend (2%/yr by default). ENSO itself is an AR(1) random walk with a ~3-year
+memory, seeded from NOAA's ONI. Drought weighted over the breadbaskets drives the world grain market;
+locally it cuts growth in proportion to the agriculture share of GDP and raises unrest.
+
 ## Events (events.py)
 
 Annual hazards: disasters 1.5 worldwide (allocated by regional exposure × population), drought 0.6, pandemic 0.03, financial crisis 0.06 × (debt and rate stress), tech boom 0.08, cyber-attack 0.5, terror 1.0. Each writes to `exo_growth` and/or state and emits a headline.

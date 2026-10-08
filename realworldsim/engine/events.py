@@ -26,10 +26,26 @@ DISASTER_EXPOSURE = {
 }
 
 
+# ENSO teleconnection sign by UN sub-region: +1 El Nino tends to dry it, -1 El Nino tends to wet it.
+ENSO_SIGN = {"Southern Africa": 1, "Eastern Africa": -0.5, "Australia and New Zealand": 1, "South-Eastern Asia": 1,
+             "Southern Asia": 0.7, "Melanesia": 1, "Central America": 0.8, "Caribbean": 0.5, "South America": -0.3,
+             "Northern America": -0.4, "Eastern Asia": 0.2, "Western Africa": 0.3, "Middle Africa": 0.3}
+BREADBASKETS = {"UKR": 0.10, "RUS": 0.20, "USA": 0.15, "CAN": 0.07, "AUS": 0.07, "FRA": 0.05, "ARG": 0.06,
+                "IND": 0.08, "KAZ": 0.03, "BRA": 0.08, "CHN": 0.11}
+
+
 class EventState:
     def __init__(self, world: World):
         self.exposure = np.array([DISASTER_EXPOSURE.get(sr, 1.0) for sr in world.subregion])
         self.exposure *= world.s["population"] ** 0.3 / (world.s["population"] ** 0.3).mean()
+        self.enso_sign = np.array([ENSO_SIGN.get(sr, 0.0) for sr in world.subregion])
+        self.subregions = sorted(set(world.subregion))
+        self.subregion_idx = np.array(world.subregion)
+        self.breadbasket_weights = np.zeros(world.n)
+        for code, w in BREADBASKETS.items():
+            if code in world.index:
+                self.breadbasket_weights[world.index[code]] = w
+        self.disaster_mult = 1.0
         self.pandemic_days = 0
         self.financial_crisis_days = 0
         self.tech_boom_days = 0
@@ -45,7 +61,7 @@ def step_events(world: World, p: EventParams, es: EventState, rng: np.random.Gen
     n = world.n
 
     # ---- natural disasters ----------------------------------------------------
-    haz = p.disaster_hazard * es.exposure / es.exposure.sum()
+    haz = p.disaster_hazard * getattr(es, "disaster_mult", 1.0) * es.exposure / es.exposure.sum()
     hits = rng.random(n) < (1 - np.exp(-haz * DT))
     for i in np.where(hits)[0]:
         sev = float(np.clip(rng.lognormal(-1.2, 0.8), 0.05, 1.0))
@@ -59,17 +75,35 @@ def step_events(world: World, p: EventParams, es: EventState, rng: np.random.Gen
                        "text": f"Major {kind} strikes {world.names[code]}"
                                + (" — thousands feared dead" if sev > 0.5 else "")})
 
-    # ---- drought in breadbaskets -----------------------------------------------
-    if rng.random() < _p(p.drought_hazard):
+    # ---- climate: per-country drought index, ENSO, warming trend ------------------
+    world.climate_years += DT
+    warming = 1 + p.climate_trend * world.climate_years
+    # ENSO random-walks between La Nina and El Nino on a ~3-4 year cycle
+    world.enso += (-0.4 * world.enso) * DT + rng.normal(0, 0.9) * np.sqrt(DT)
+    world.enso = float(np.clip(world.enso, -2.5, 2.5))
+    world.enso_state = "el_nino" if world.enso >= 0.5 else "la_nina" if world.enso <= -0.5 else "neutral"
+    # regional ENSO teleconnections (positive = El Nino dries it out)
+    enso_push = p.enso_strength * world.enso * es.enso_sign * DT
+    s["drought"] += -p.drought_decay * s["drought"] * DT + enso_push
+    # regional drought / wet spells, more frequent as the world warms
+    if rng.random() < _p(p.drought_hazard * warming):
+        sr = rng.choice(es.subregions)
+        mask = es.subregion_idx == sr
         sev = float(np.clip(rng.normal(0.5, 0.2), 0.1, 1.0))
-        market_state.drought = min(1.0, market_state.drought + sev)
-        events.append({"type": "drought", "country": None, "severity": 0.5,
-                       "text": "Severe drought hits major grain-exporting regions; harvest forecasts cut"})
+        s["drought"][mask] = np.minimum(1.0, s["drought"][mask] + sev)
+        events.append({"type": "drought", "country": world.iso[int(np.where(mask)[0][0])], "severity": 0.5,
+                       "text": f"Severe drought across {sr}; harvest forecasts cut"})
     if rng.random() < _p(p.bumper_harvest_hazard):
-        sev = float(np.clip(rng.normal(0.4, 0.15), 0.1, 0.8))
-        market_state.drought = max(-1.0, market_state.drought - sev)
-        events.append({"type": "harvest", "country": None, "severity": 0.2,
-                       "text": "Record harvests in major exporters push grain prices lower"})
+        sr = rng.choice(es.subregions)
+        mask = es.subregion_idx == sr
+        s["drought"][mask] = np.maximum(-1.0, s["drought"][mask] - float(np.clip(rng.normal(0.4, 0.15), 0.1, 0.8)))
+        events.append({"type": "harvest", "country": world.iso[int(np.where(mask)[0][0])], "severity": 0.2,
+                       "text": f"Good rains bring record harvests in {sr}"})
+    s["drought"] = np.clip(s["drought"], -1, 1)
+    # breadbasket drought feeds the world grain market
+    bb = es.breadbasket_weights
+    market_state.drought = float(np.clip((s["drought"] * bb).sum(), -1, 1))
+    es.disaster_mult = warming
 
     # ---- pandemic -------------------------------------------------------------
     if es.pandemic_days == 0 and rng.random() < _p(p.pandemic_hazard):

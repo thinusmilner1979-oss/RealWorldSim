@@ -30,12 +30,14 @@ Headless, no UI:
 rws run --years 20 --seed 7 -v
 ```
 
-Pull today's real figures (World Bank, UCDP, GDELT, FRED — all free, no keys) and start from them:
+Pull today's real figures and start from them — either press **Sync now** on the dashboard's *Data* tab, or:
 
 ```bash
-rws sync             # writes .rws_cache/live_seed.json
-rws serve            # picks the cache up automatically
+rws sync             # writes .rws_cache/live_seed.json; `rws serve` picks it up automatically
+rws serve --auto-sync 7   # sync on launch whenever the cache is older than a week
 ```
+
+Every source is free, needs no account or API key, and is fetched from your own machine.
 
 Backtest it — start in 2015, run an ensemble to 2025, score it against what actually happened:
 
@@ -56,6 +58,7 @@ Linux Mint desktop launcher (creates a venv, installs, adds a menu entry):
 * **Feed**: a wire of everything that happens — wars, ceasefires, coups, defaults, disasters, pandemics, market moves. Click an item to jump to the country.
 * **Country**: click any country for its full state, history charts, top tensions, trade partners and sanctions.
 * **Intervene**: set tension between any two countries, declare war, broker ceasefires, impose sanctions (bilateral or NATO+EU), close a shipping chokepoint (Hormuz, Red Sea, Malacca…), apply an oil supply shock, or hit a country with a recession, hyperinflation, revolution or default. Every intervention is logged.
+* **Data tab**: sync live data per source with progress, see how old the cache is, restart the world from it.
 * **Seeds**: same seed + same interventions = same world, always. Save and load worlds; export the global history as CSV.
 
 ## How the model works
@@ -66,9 +69,9 @@ Short version (the long version is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.m
 |---|---|
 | **Macro** (`engine/economy.py`) | Growth responds to real rates, oil prices, trading partners, unrest, war and sanctions. Inflation follows a Phillips curve with commodity and FX pass-through, anchored to a target. Central banks run a Taylor rule (badly, if the state is unstable). Okun's law for unemployment, debt accumulates from deficits, debt crises hit when sustainability breaks, exchange rates move with inflation and risk. |
 | **Commodities** (`engine/commodities.py`) | Oil priced from country-level supply and demand, with war losses, sanctions, chokepoint closures and slow capacity growth. Gas (hub + European premium), wheat (breadbasket wars, drought, fertilizer), copper (industrial demand), gold (global risk). |
-| **Geopolitics** (`engine/geopolitics.py`) | A 195×195 tension matrix driven by rivalries, geography, alliances, sanctions, arms build-ups, trade and spill-over. Wars break out stochastically at high tension, damped by nuclear deterrence, extended deterrence and the democratic peace; they escalate, exhaust, and end. Unrest rises with inflation surprises, unemployment, food prices and economic collapse; high unrest topples governments, triggers coups or civil wars. Refugees flow to neighbours. |
-| **Events** (`engine/events.py`) | Exogenous shocks: natural disasters, droughts, pandemics, financial crises, technology booms, cyber-attacks, terror. |
-| **Data** (`sync/`, `data/`) | Bundled seed from Natural Earth plus curated 2025 estimates; live sync from World Bank, UCDP, GDELT and FRED. |
+| **Geopolitics** (`engine/geopolitics.py`) | A 196×196 tension matrix driven by rivalries, geography, alliances, sanctions, arms build-ups, trade and spill-over. Wars break out stochastically at high tension, damped by nuclear deterrence, extended deterrence, the democratic peace and the **military balance** (an index from budget, personnel, technology and nuclear status); frozen conflicts escalate to full-scale war by decision, not drift; wars exhaust, end in ceasefire, or end **decisively** with the loser destabilised. Unrest rises with inflation surprises, unemployment, food prices, drought and economic collapse; high unrest topples governments, triggers coups or civil wars. Refugees flow to neighbours. |
+| **Events & climate** (`engine/events.py`) | Per-country **drought index** driven by regional dry/wet spells, the El Niño cycle and a warming trend; feeds harvests, grain prices, growth in farm-heavy economies and unrest. Plus natural disasters, pandemics, financial crises, technology booms, cyber-attacks, terror. |
+| **Data** (`sync/`, `data/`) | Bundled seed from Natural Earth plus curated 2025 estimates; live sync from World Bank, Our World in Data (energy, SIPRI, UN population, V-Dem), UCDP, GDELT, Open-Meteo + NOAA (climate), UNHCR, IMF PortWatch, Stooq and FRED. |
 | **Backtest** (`backtest/`) | 2015 start state, parallel ensemble, scorecard of real outcomes, coverage / Brier / false-alarm scores. |
 
 All tunable constants are in `engine/params.py`.
@@ -81,9 +84,13 @@ Yes please. This is a big, fun, open-ended problem and it needs economists, poli
 
 * Country geometry, population, GDP, regions: [Natural Earth](https://www.naturalearthdata.com/) (public domain)
 * Live macro: [World Bank Indicators API](https://datahelpdesk.worldbank.org/knowledgebase/articles/889392) (CC BY 4.0)
+* Energy, military spending (SIPRI), population (UN), democracy (V-Dem): [Our World in Data](https://ourworldindata.org/) grapher CSVs (CC BY 4.0)
 * Conflict events: [UCDP GED](https://ucdp.uu.se/) (CC BY 4.0)
 * News events: [GDELT 2.0](https://www.gdeltproject.org/) (free, attribution requested)
-* Commodity prices: [FRED](https://fred.stlouisfed.org/) (public)
+* Weather history: [Open-Meteo](https://open-meteo.com/) ERA5 archive (CC BY 4.0, non-commercial API use); El Niño index: [NOAA CPC](https://www.cpc.ncep.noaa.gov/)
+* Refugees: [UNHCR Refugee Data Finder API](https://www.unhcr.org/refugee-statistics/) (CC BY 4.0)
+* Shipping chokepoints: [IMF PortWatch](https://portwatch.imf.org/) (open)
+* Prices: [Stooq](https://stooq.com/) and [FRED](https://fred.stlouisfed.org/)
 * Front-end: [d3](https://d3js.org/) (ISC), [uPlot](https://github.com/leeoniya/uPlot) (MIT) — vendored, so the app runs offline.
 
 Code is MIT licensed. The hand-curated figures in `data/overrides.json` are approximate 2025 estimates meant only to seed the model; `rws sync` replaces them with sourced values.

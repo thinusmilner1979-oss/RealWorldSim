@@ -127,12 +127,19 @@ def step_geopolitics(world: World, p: GeoParams, gs: GeoState, rng: np.random.Ge
     hazard = np.where(np.outer(dem, dem), hazard * p.democracy_peace, hazard)
     # only plausible for neighbours or great-power rivalries (projection capability ~ GDP)
     reach = (world.distance < 2500) | (np.minimum.outer(s["gdp"], s["gdp"]) > 800)
+    # military balance: wars start when one side expects to win; peers deter each other
+    mp = np.maximum(s["mil_power"], 1e-3)
+    share = mp[:, None] / (mp[:, None] + mp[None, :])
+    dominance = np.abs(share - 0.5) * 2  # 0 = peers, 1 = total mismatch
+    hazard = hazard * (1 - p.dominance_hazard / 2 + p.dominance_hazard * dominance)
     hazard = np.where(reach & ~at_war, hazard, 0.0)
     hazard = np.triu(hazard, 1)
     draws = rng.random((n, n)) < _hazard(hazard)
     for ia, ib in zip(*np.where(draws), strict=True):
-        # aggressor is the more autocratic / higher tension initiator; defender the other
-        if s["regime"][ib] > s["regime"][ia]:
+        # aggressor: the more autocratic side, unless it is hopelessly outgunned
+        if s["regime"][ib] > s["regime"][ia] and s["mil_power"][ib] > 0.3 * s["mil_power"][ia]:
+            ia, ib = ib, ia
+        elif s["mil_power"][ia] < 0.3 * s["mil_power"][ib]:
             ia, ib = ib, ia
         a, b = world.iso[ia], world.iso[ib]
         intensity = float(np.clip(rng.normal(0.35, 0.15), 0.1, 0.8))
@@ -158,9 +165,17 @@ def step_geopolitics(world: World, p: GeoParams, gs: GeoState, rng: np.random.Ge
     for c in world.active_conflicts():
         c.days += 1
         ia, ib = world.index[c.a], world.index[c.b]
-        drift = p.escalation_drift
         if c.type != "civil":
-            drift += 0.3 * (world.tension[ia, ib] - 0.7) * DT * 10
+            t = world.tension[ia, ib]
+            target = float(np.clip((t - 0.5) * 1.4, 0.05, 1.0))  # tension 0.85 -> ~0.5; 0.95 -> 0.63
+            # deliberate escalation to full-scale war: rare unless tension is extreme
+            if not c.major:
+                hz = p.escalation_hazard / (1 + np.exp(-(t - p.escalation_threshold) / p.escalation_width))
+                if rng.random() < _hazard(hz):
+                    c.intensity = float(np.clip(rng.normal(0.8, 0.1), 0.6, 1.0))
+        else:
+            target = float(np.clip(0.3 + 0.5 * (1 - s["stability"][ia]), 0.1, 0.9))
+        drift = p.intensity_reversion * (target - c.intensity) * DT
         # exhaustion: long high-intensity wars decay
         drift -= p.war_weariness * c.intensity * (c.days / 365.0) * DT
         c.intensity = float(np.clip(c.intensity + drift + rng.normal(0, p.intensity_noise), 0.02, 1.0))
@@ -173,9 +188,29 @@ def step_geopolitics(world: World, p: GeoParams, gs: GeoState, rng: np.random.Ge
                                "text": f"{c.name} escalates into full-scale war"})
         elif c.major and c.intensity < 0.35:
             c.major = False
-        elif c.intensity > c.peak - 1e-9 and c.intensity > 0.6 and rng.random() < 0.05:
+        elif c.intensity > c.peak - 1e-9 and c.intensity > 0.6 and rng.random() < 0.01:
             events.append({"type": "escalation", "country": c.a, "country2": c.b, "severity": 0.7,
                            "text": f"{c.name} escalates sharply"})
+        # decisive outcome: the stronger side can win outright; more likely the bigger the mismatch
+        if c.type != "civil" and c.major:  # frozen conflicts are not decided; full-scale wars can be
+            pa, pb = max(s["mil_power"][ia], 1e-3), max(s["mil_power"][ib], 1e-3)
+            share_a = pa / (pa + pb)
+            mismatch = abs(share_a - 0.5) * 2
+            hz_dec = p.decisive_hazard * mismatch ** 2 * c.intensity ** 2 * min(c.days / 180.0, 2.0)
+            if rng.random() < _hazard(hz_dec):
+                winner, loser = (ia, ib) if rng.random() < share_a else (ib, ia)
+                c.ended = today
+                c.outcome = f"{world.iso[winner]} victory"
+                s["stability"][loser] = max(0.05, s["stability"][loser] - 0.2)
+                s["unrest"][loser] = min(1.0, s["unrest"][loser] + 0.25)
+                s["stability"][winner] = min(0.98, s["stability"][winner] + 0.05)
+                world.exo_growth[loser] -= 4.0 * c.intensity
+                world.tension[ia, ib] = world.tension[ib, ia] = 0.5
+                world.tension_base[ia, ib] = world.tension_base[ib, ia] = max(world.tension_base[ia, ib] * 0.8, 0.35)
+                events.append({"type": "war_end", "country": world.iso[winner], "country2": world.iso[loser],
+                               "severity": 0.8, "text": f"{c.name} ends in {world.names[world.iso[winner]]} victory; "
+                                                        f"{world.names[world.iso[loser]]} capitulates"})
+                continue
         # ceasefire hazard grows with duration and damage, falls with intensity momentum
         damage = (s["unrest"][ia] + s["unrest"][ib]) / 2 + 0.3 * min(c.days / 365.0, 3) / 3
         hz = p.ceasefire_base_hazard * (0.3 + damage) * (1.3 - c.intensity)
@@ -205,6 +240,8 @@ def step_geopolitics(world: World, p: GeoParams, gs: GeoState, rng: np.random.Ge
     # military spending relaxes toward baseline when at peace
     s["mil_spend_gdp"] += (np.where(war > 0, 0, 1) * (1.8 - s["mil_spend_gdp"]) * 0.05) * DT
     s["mil_spend_gdp"] = np.clip(s["mil_spend_gdp"], 0.1, 40)
+    if gs.counter % 30 == 0:
+        world.update_military_power()
 
     # ---- civil unrest ----------------------------------------------------------
     food_ret = np.log(world.prices["wheat"] / gs.prev_food) * 100
@@ -222,6 +259,7 @@ def step_geopolitics(world: World, p: GeoParams, gs: GeoState, rng: np.random.Ge
         + p.unrest_food * (food_ret / 10.0) * s["food_import_share"] * 0.3
         + 0.15 * np.maximum(-s["growth"], 0) / 10 * DT * 4
         + 0.2 * war * DT
+        + p.drought_unrest * np.maximum(s["drought"], 0) * DT * 4
         + rng.normal(0, p.unrest_noise, n) * np.sqrt(DT) * 4
     )
     du = np.where(du > 0, du * (1.1 - u), du)  # harder to push unrest toward saturation

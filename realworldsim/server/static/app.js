@@ -26,6 +26,8 @@
     fx:              { label: 'FX vs start',   kind: 'div', dom: [60, 100, 250], f: (v) => fmt.n(v, 0), invert: true },
     mil_spend_gdp:   { label: 'Military %GDP', kind: 'seq', dom: [0, 8],    f: (v) => fmt.pct(v) },
     gdp:             { label: 'GDP',           kind: 'seq', dom: [1, 30000], f: (v) => fmt.tn(v), log: true },
+    drought:         { label: 'Drought',       kind: 'div', dom: [-0.8, 0, 0.8], f: (v) => fmt.n(v, 2), invert: true },
+    mil_power:       { label: 'Military power', kind: 'seq', dom: [0, 1],   f: (v) => fmt.n(v, 2) },
     tension:         { label: 'Tension with…', kind: 'seq', dom: [0, 1],    f: (v) => fmt.n(v, 2) },
   };
   const FIELD_LABELS = { gdp: 'GDP', growth: 'Growth', inflation: 'Inflation', unemployment: 'Unemployment', policy_rate: 'Policy rate',
@@ -101,6 +103,7 @@
     $('#k-wars').textContent = w.active_wars;
     $('#k-ref').textContent = fmt.pop(w.refugees);
     $('#k-risk').textContent = fmt.n(w.risk, 2);
+    if (w.enso_state) { const e = $('#d-enso'); e.textContent = w.enso_state === 'el_nino' ? 'El Niño' : w.enso_state === 'la_nina' ? 'La Niña' : 'ENSO neutral'; e.className = 'd ' + (w.enso_state === 'el_nino' ? 'up' : w.enso_state === 'la_nina' ? 'down' : ''); }
     $('#k-riskbar').style.width = `${Math.min(100, w.risk * 100)}%`;
   }
 
@@ -291,6 +294,38 @@
     $('#iv-setvar').onclick = () => intervene({ kind: 'set_variable', a: $('#iv-c').value, field: $('#iv-field').value, value: +$('#iv-val').value });
   }
 
+  // ---- data tab -------------------------------------------------------------------
+  let dataPoll = null;
+  async function refreshData() {
+    const d = await api('/api/data');
+    const c = d.cache; const st = $('#data-status');
+    if (!c.exists) st.innerHTML = '<b>No live data yet.</b> The world is running on the bundled seed figures. Press <i>Sync now</i> to pull today\'s data.';
+    else st.innerHTML = `Cache from <b>${c.date}</b> (${c.age_days} days old) · ${c.countries} countries · world currently ${d.world_live_date ? 'running on live data from ' + d.world_live_date : 'on bundled data — press <i>Restart world with live data</i>'}`;
+    const ul = $('#sources'); ul.innerHTML = '';
+    const logBy = Object.fromEntries((d.sync.log || []).map((r) => [r.source, r]));
+    d.sources.forEach((s) => {
+      const r = logBy[s.name]; const prev = c.sources && c.sources[s.name];
+      const status = r ? r.status : prev ? (prev.ok ? 'ok' : 'failed') : '';
+      const li = el('li', status);
+      const chk = el('label', 'src'); const cb = el('input'); cb.type = 'checkbox'; cb.checked = true; cb.dataset.src = s.name; chk.appendChild(cb);
+      li.appendChild(chk); li.appendChild(el('span', 'n', s.name));
+      li.appendChild(el('span', 'st', r ? r.detail : prev ? (prev.ok ? `${prev.countries || ''} ok ${prev.seconds}s` : 'failed: ' + (prev.error || 'no data')) : 'never run'));
+      li.appendChild(el('span', 'd', s.description));
+      li.insertBefore(el('span', 'dot'), li.querySelector('.n'));
+      ul.appendChild(li);
+    });
+    $('#btn-sync').disabled = d.sync.running; $('#btn-sync').textContent = d.sync.running ? 'Syncing…' : 'Sync now';
+    if (d.sync.running && !dataPoll) dataPoll = setInterval(refreshData, 1500);
+    if (!d.sync.running && dataPoll) { clearInterval(dataPoll); dataPoll = null; }
+    const w = S.state && S.state.world;
+    if (w) $('#climate-status').textContent = `ENSO: ${w.enso_state} (ONI ${w.enso >= 0 ? '+' : ''}${w.enso}). Drought index per country is on the map (chip "Drought").`;
+  }
+  function bindData() {
+    $('#btn-sync').onclick = async () => { const srcs = [...document.querySelectorAll('#sources input[type=checkbox]')].filter((c) => c.checked).map((c) => c.dataset.src); await api('/api/sync', { sources: srcs.length ? srcs : null }).catch((e) => toast(e.message)); refreshData(); };
+    $('#btn-apply').onclick = async () => { if (confirm('Restart the world from the live data cache? Current history is lost unless saved.')) { S.events = []; S.seenEventKey.clear(); Object.values(S.charts).forEach((c) => c.destroy()); S.charts = {}; await api('/api/apply_live', {}).catch((e) => toast(e.message)); refreshHistory(); refreshData(); } };
+    document.querySelector('.tabs button[data-tab=data]').addEventListener('click', refreshData);
+  }
+
   // ---- controls --------------------------------------------------------------------
   function bindControls() {
     $('#btn-play').onclick = () => control(S.running ? 'pause' : 'play');
@@ -310,7 +345,7 @@
   (async () => {
     const [meta, geo, st] = await Promise.all([api('/api/meta'), api('/api/geo'), api('/api/state')]);
     S.meta = meta; S.geo = geo;
-    buildMap(); buildIntervene(); bindControls();
+    buildMap(); buildIntervene(); bindControls(); bindData();
     onFrame({ state: st.state, running: st.running, speed: st.speed, events: await api('/api/events?limit=80') });
     refreshHistory();
     connect();

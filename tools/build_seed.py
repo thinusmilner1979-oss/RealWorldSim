@@ -34,7 +34,7 @@ INCOME = {
 
 
 # Entities Natural Earth marks disputed/indeterminate that we model anyway.
-EXTRA = {"KOS": "XKX", "PSX": "PSE"}  # ADM0_A3 -> code used by World Bank
+EXTRA = {"KOS": "XKX", "PSX": "PSE", "ISR": "ISR"}  # ADM0_A3 -> code used by World Bank
 
 
 def iso3(p: dict) -> str:

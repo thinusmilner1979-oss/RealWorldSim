@@ -46,6 +46,9 @@ COUNTRY_FIELDS = [
     "refugees_out",   # cumulative, persons
     "refugees_in",
     "risk",           # composite risk premium 0..1
+    "drought",        # -1..1 rainfall anomaly index (positive = drier than normal), decays toward climate trend
+    "mil_power",      # military power index, USA = 1.0 (budget, personnel, technology, nuclear)
+    "mil_personnel",  # armed forces personnel
 ]
 
 INCOME_DEFAULTS = {
@@ -75,6 +78,7 @@ class Conflict:
     ended: date | None = None
     peak: float = 0.0
     major: bool = False  # has crossed into major war (intensity >= 0.6) since it was last low
+    outcome: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -82,7 +86,7 @@ class Conflict:
             "intensity": round(float(self.intensity), 3), "started": self.started.isoformat(),
             "type": self.type, "supporters_a": self.supporters_a, "supporters_b": self.supporters_b,
             "days": self.days, "ended": self.ended.isoformat() if self.ended else None,
-            "peak": round(float(self.peak), 3),
+            "peak": round(float(self.peak), 3), "outcome": self.outcome,
         }
 
 
@@ -162,10 +166,21 @@ class World:
                 "refugees_out": 0.0,
                 "refugees_in": 0.0,
                 "risk": 0.0,
+                "drought": float(o.get("drought_index", 0.0)),
+                "mil_power": 0.0,
+                "mil_personnel": o.get("mil_personnel", 0.0),
             }
             for k, v in vals.items():
                 self.s[k][i] = float(v)
             self.nuclear[i] = bool(o.get("nuclear", False))
+
+        # Refugee stocks from UNHCR when synced
+        for i, c in enumerate(self.countries):
+            lv = live.get(c["iso3"], {})
+            self.s["refugees_out"][i] = float(lv.get("refugees_out_live", 0.0))
+            self.s["refugees_in"][i] = float(lv.get("refugees_in_live", 0.0))
+        # Military power index (USA = 1): budget, personnel, technology (GDP/head), nuclear
+        self.update_military_power()
 
         # Fill in oil/gas consumption for countries without data: scale with GDP.
         no_oil = self.s["oil_cons"] == 0
@@ -207,6 +222,15 @@ class World:
             k: dict(v, closed=False) for k, v in overrides["chokepoints"].items() if not k.startswith("_")
         }
         self.oil_supply_shock = 0.0  # fraction of world supply removed by user intervention
+        # climate: El Nino / La Nina state (ONI) and a slow warming trend applied in events.py
+        enso = live.get("_enso", {}) if isinstance(live.get("_enso"), dict) else {}
+        self.enso = float(enso.get("oni", 0.0))
+        self.enso_state = enso.get("state", "neutral")
+        self.climate_years = 0.0
+        # chokepoint disruption observed in shipping data (PortWatch) - calibrated out at t=0
+        for key, obs in (live.get("_chokepoints") or {}).items():
+            if key in self.chokepoints:
+                self.chokepoints[key]["observed_disruption"] = float(obs.get("disruption", 0.0))
         # exogenous growth gap (pp) set by events (pandemic, crises); decays in economy.py
         self.exo_growth = np.zeros(n)
         self.risk0 = None  # starting global risk, set by the simulation after construction
@@ -331,6 +355,19 @@ class World:
         gas_price = self.prices.get("gas", 3.2) if hasattr(self, "prices") else 3.2
         gas_bill_bn = net_gas * 35.3 * gas_price / 1000.0
         self.gas_import_gdp = gas_bill_bn / np.maximum(self.s["gdp"], 1.0)
+
+    def update_military_power(self) -> None:
+        """0..~1.2 index: 0.5*log budget + 0.2*log personnel + 0.2*technology + 0.1*nuclear, USA = 1."""
+        s = self.s
+        budget = s["gdp"] * s["mil_spend_gdp"] / 100.0  # USD bn
+        personnel = np.where(s["mil_personnel"] > 0, s["mil_personnel"], s["population"] * 0.004)
+        s["mil_personnel"] = personnel
+        tech = np.clip(np.log10(np.maximum(s["gdp"] / np.maximum(s["population"], 1) * 1e9, 300) / 300) / 2.3, 0, 1)
+        raw = (0.5 * np.log10(budget + 0.5) / np.log10(1000) + 0.2 * np.log10(personnel / 1000 + 1) / 3.3
+               + 0.2 * tech + 0.1 * self.nuclear)
+        usa = self.index.get("USA")
+        ref = raw[usa] if usa is not None else raw.max()
+        s["mil_power"] = np.clip(raw / max(ref, 1e-6), 0.0, 1.5)
 
     # ---------------------------------------------------------------- queries
     def i(self, code: str) -> int:
