@@ -24,7 +24,6 @@ NAME_MAP = {
 
 def disruption(features: list[dict], today: date | None = None) -> dict[str, dict]:
     today = today or date.today()
-    recent_cut = (today - timedelta(days=30)).toordinal() * 86400000  # ArcGIS epoch ms (approx)
     recent: dict[str, list[float]] = {}
     base: dict[str, list[float]] = {}
     for f in features:
@@ -32,8 +31,14 @@ def disruption(features: list[dict], today: date | None = None) -> dict[str, dic
         key = NAME_MAP.get(a.get("portname", ""))
         if not key or a.get("n_total") is None or a.get("date") is None:
             continue
-        ts = a["date"] / 1000.0 if a["date"] > 1e11 else a["date"]
-        d = date.fromtimestamp(ts)
+        raw = a["date"]
+        try:
+            if isinstance(raw, str):
+                d = date.fromisoformat(raw[:10])
+            else:
+                d = date.fromtimestamp(raw / 1000.0 if raw > 1e11 else raw)
+        except (ValueError, OSError, TypeError):
+            continue
         (recent if (today - d).days <= 30 else base).setdefault(key, []).append(float(a["n_total"]))
     out = {}
     for key, vals in recent.items():
@@ -43,7 +48,6 @@ def disruption(features: list[dict], today: date | None = None) -> dict[str, dic
         ratio = (sum(vals) / len(vals)) / max(sum(b) / len(b), 1e-9)
         out[key] = {"transits_per_day": round(sum(vals) / len(vals), 1), "normal_per_day": round(sum(b) / len(b), 1),
                     "disruption": round(max(0.0, min(1.0, 1 - ratio)), 3)}
-    del recent_cut
     return out
 
 
